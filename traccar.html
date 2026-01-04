@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traccar Timeline</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<style>
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+
+body.dark-mode {
+  background: #1a1a1a;
+  color: #e0e0e0;
+}
+
+#map { height: 100%; width: 100%; }
+
+
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: white;
+  color: #333;
+}
+
+body.dark-mode .leaflet-popup-content-wrapper, body.dark-mode .leaflet-popup-tip {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+.map-marker-details{
+  background-color: #99999923;
+  font-size: 11px;
+  margin: 2px 0;
+  padding: 6px;
+}
+
+#legend {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: white;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+body.dark-mode #legend {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.legend-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.legend-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px;
+  line-height: 1;
+}
+
+.legend-items {
+  overflow-y: auto;
+  transition: max-height 0.3s ease;
+}
+
+.legend-items.collapsed {
+  max-height: 0;
+  overflow: hidden;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 3px;
+  transition: background 0.2s;
+  font-size: 12px;
+}
+
+.legend-item:hover {
+  background: #f0f0f0;
+}
+
+body.dark-mode .legend-item:hover {
+  background: #3a3a3a;
+}
+
+.legend-item.disabled {
+  opacity: 0.5;
+}
+
+.legend-item.disabled .color-box {
+  background: #999 !important;
+}
+
+.legend-item-name {
+  flex: 1;
+  margin-right: 8px;
+}
+
+.legend-item-status {
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+
+.color-box {
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
+
+#timeline-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px 12px 12px;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.2);
+}
+
+body.dark-mode #timeline-container {
+  background: rgba(42, 42, 42, 0.95);
+}
+
+#timeline-title {
+  text-align: center;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+body.dark-mode #timeline-title {
+  color: #e0e0e0;
+}
+
+#timeline-title-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+#timeline-title-center {
+  flex: 2;
+  text-align: center;
+}
+
+#timeline-title-right {
+  flex: 1;
+  text-align: right;
+}
+
+.timeline-collapse-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px;
+  line-height: 1;
+}
+
+#timeline-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#timeline-controls button {
+  padding: 4px 10px;
+  background: #4ECDC4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#timeline-controls button:hover {
+  background: #3db8b0;
+}
+
+body.dark-mode #timeline-controls button {
+  background: #2A9D8F;
+}
+
+body.dark-mode #timeline-controls button:hover {
+  background: #238b7e;
+}
+
+#timeline-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#timeline {
+  position: relative;
+  width: 100%;
+  background: #f5f5f5;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  user-select: none;
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  cursor: crosshair;
+}
+
+#timeline.collapsed {
+  max-height: none;
+  overflow: hidden;
+}
+
+body.dark-mode #timeline {
+  background: #1a1a1a;
+  border-color: #444;
+}
+
+#timeline-devices {
+  position: relative;
+  min-height: 30px;
+  padding: 4px 0;
+}
+
+#timeline-devices.hidden {
+  display: none;
+}
+
+#timeline-collapsed-view {
+  position: relative;
+  height: 20px;
+  padding: 4px 0;
+  display: none;
+}
+
+#timeline-collapsed-view.visible {
+  display: block;
+}
+
+.timeline-device-row {
+  position: relative;
+  height: 12px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-device-row:last-child {
+  margin-bottom: 0;
+}
+
+.timeline-device-name {
+  position: sticky;
+  left: 2px;
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 2px 4px;
+  border-radius: 2px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  transition: background 0.2s;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.timeline-device-name:hover {
+  background: rgba(255, 255, 255, 1);
+}
+
+body.dark-mode .timeline-device-name {
+  background: rgba(42, 42, 42, 0.9);
+}
+
+body.dark-mode .timeline-device-name:hover {
+  background: rgba(42, 42, 42, 1);
+}
+
+.timeline-device-name.disabled {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+.timeline-device-tracks {
+  position: relative;
+  flex: 1;
+  height: 100%;
+}
+
+.timeline-period {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.timeline-period.even {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.timeline-period.odd {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+body.dark-mode .timeline-period.even {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+body.dark-mode .timeline-period.odd {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.timeline-selection {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: rgba(78, 205, 196, 0.2);
+  border-left: 2px solid #4ECDC4;
+  border-right: 2px solid #4ECDC4;
+  pointer-events: none;
+  z-index: 5;
+}
+
+body.dark-mode .timeline-selection {
+  background: rgba(42, 157, 143, 0.3);
+  border-color: #2A9D8F;
+}
+
+.timeline-scrubber {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: #000;
+  pointer-events: none;
+  z-index: 10;
+}
+
+body.dark-mode .timeline-scrubber {
+  background: #fff;
+}
+
+.timeline-scrubber.selected {
+  background: #E63946;
+  width: 3px;
+  z-index: 11;
+}
+
+body.dark-mode .timeline-scrubber.selected {
+  background: #FF6B6B;
+}
+
+.timeline-labels {
+  height: 20px;
+  width: 100%;
+  pointer-events: none;
+}
+
+.timeline-tick-label {
+  position: absolute;
+  font-size: 10px;
+  color: #666;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+body.dark-mode .timeline-tick-label {
+  color: #aaa;
+}
+
+.timeline-tick-label.first {
+  transform: none;
+  left: 0 !important;
+}
+
+.timeline-tick-label.last {
+  transform: translateX(-100%);
+}
+
+.timeline-tick-label.middle {
+  transform: translateX(-50%);
+}
+
+.timeline-track {
+  position: absolute;
+  height: 8px;
+  border-radius: 2px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  z-index: 3;
+}
+
+.timeline-track:hover {
+  opacity: 1;
+}
+
+.timeline-row-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.02);
+  z-index: 2;
+}
+
+body.dark-mode .timeline-row-bg {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.timeline-device-label {
+  /* position: absolute; */
+  font-size: 9px;
+  color: #333;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: auto;
+  text-shadow: 0 0 2px white, 0 0 2px white, 0 0 2px white;
+  cursor: pointer;
+  z-index: 4;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: background 0.2s;
+}
+
+.timeline-device-label:hover {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+body.dark-mode .timeline-device-label {
+  color: #e0e0e0;
+  text-shadow: 0 0 2px black, 0 0 2px black, 0 0 2px black;
+}
+
+body.dark-mode .timeline-device-label:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.timeline-device-label.disabled {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+
+#time-selector {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+body.dark-mode #time-selector {
+  background: #2a2a2a;
+}
+
+#time-selector select {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 13px;
+  cursor: pointer;
+  background: white;
+  color: #333;
+}
+
+body.dark-mode #time-selector select {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+#settings-btn, #change-time-btn {
+  padding: 6px 10px;
+  background: #4ECDC4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+#settings-btn:hover, #change-time-btn:hover {
+  background: #3db8b0;
+}
+
+body.dark-mode #settings-btn, body.dark-mode #change-time-btn {
+  background: #2A9D8F;
+}
+
+body.dark-mode #settings-btn:hover, body.dark-mode #change-time-btn:hover {
+  background: #238b7e;
+}
+
+#custom-time {
+  display: none;
+  position: absolute;
+  top: 50px;
+  right: 10px;
+  z-index: 1001;
+  background: white;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  font-size: 12px;
+}
+
+body.dark-mode #custom-time {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+#custom-time input {
+  display: block;
+  margin: 4px 0;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  font-size: 12px;
+  background: white;
+  color: #333;
+}
+
+body.dark-mode #custom-time input {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+#custom-time button {
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: #4ECDC4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#custom-time button:hover {
+  background: #3db8b0;
+}
+
+body.dark-mode #custom-time button {
+  background: #2A9D8F;
+}
+
+body.dark-mode #custom-time button:hover {
+  background: #238b7e;
+}
+
+#settings-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+
+#settings-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  min-width: 300px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+body.dark-mode #settings-content {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+#settings-content h3 {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.setting-row {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-row label {
+  font-size: 14px;
+}
+
+.setting-row select {
+  padding: 4px 8px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: white;
+  color: #333;
+}
+
+body.dark-mode .setting-row select {
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+#close-settings {
+  margin-top: 16px;
+  padding: 8px 16px;
+  background: #4ECDC4;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  width: 100%;
+}
+
+#close-settings:hover {
+  background: #3db8b0;
+}
+
+body.dark-mode #close-settings {
+  background: #2A9D8F;
+}
+
+body.dark-mode #close-settings:hover {
+  background: #238b7e;
+}
+
+@media (max-width: 768px) {
+  #timeline-wrapper { height: 60px; }
+  #legend { font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="legend">
+  <div class="legend-header">
+    <button class="legend-toggle" id="legend-toggle-btn">▼</button>
+    <span>Devices</span>
+  </div>
+  <div class="legend-items" id="legend-items"></div>
+</div>
+
+<div id="timeline-container">
+  <div id="timeline-title">
+    <div id="timeline-title-left">
+      <div id="timeline-controls" style="display: none;">
+        <button id="reset-timeline-btn">Reset</button>
+      </div>
+    </div>
+    <div id="timeline-title-center">
+      <span id="timeline-title-text"></span>
+    </div>
+    <div id="timeline-title-right">
+      <button class="timeline-collapse-btn" id="timeline-collapse-btn">▼</button>
+    </div>
+  </div>
+  <div id="timeline-wrapper">
+    <div id="timeline">
+      <div id="timeline-devices"></div>
+      <div id="timeline-collapsed-view"></div>
+    </div>
+    <div class="timeline-scrubber" id="scrubber" style="left: -2px;"></div>
+  </div>
+  <div class="timeline-labels" id="timeline-labels"></div>
+</div>
+
+<div id="time-selector">
+  <select id="time-range">
+    <option value="realtime">Real Time ~3hrs</option>
+    <option value="today">Today</option>
+    <option value="yesterday">Yesterday</option>
+    <option value="week">This Week</option>
+    <option value="month">This Month</option>
+    <option value="custom">Custom</option>
+  </select>
+  <button id="change-time-btn" style="display: none;">Change Time</button>
+  <button id="settings-btn">⚙️</button>
+</div>
+
+<div id="custom-time">
+  <label>From:<input type="datetime-local" id="custom-from"></label>
+  <label>To:<input type="datetime-local" id="custom-to"></label>
+  <button id="custom-apply">Apply</button>
+</div>
+
+<div id="settings-modal">
+  <div id="settings-content">
+    <h3>Settings</h3>
+    <div class="setting-row">
+      <label>Theme:</label>
+      <select id="theme-select">
+        <option value="auto">Auto</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </div>
+    <button id="close-settings">Close</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+'use strict';
+
+// Wait for Leaflet to load
+if (typeof L === 'undefined') {
+  console.error('Leaflet failed to load');
+  document.body.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;"><div style="text-align: center;"><h2>Map Library Failed to Load</h2><p>Please check your internet connection and refresh the page.</p></div></div>';
+  throw new Error('Leaflet library not loaded');
+}
+
+// Configuration
+const CONFIG = {
+  API_URL: '/traccar/api/',
+  POLL_INTERVAL_MS: 5000,
+  MOVEMENT_THRESHOLD_M: 7.5, // meters - noise floor for GPS
+  PALETTE: [
+    '#2A9D8F', // Teal
+    '#E63946', // Bright Red
+    '#F77F00', // Orange
+    '#9D4EDD', // Purple
+    '#4CC9F0', // Sky Blue
+    '#F72585', // Hot Pink
+    '#FFD60A', // Yellow
+    '#FF006E', // Magenta
+    '#118AB2', // Blue
+    '#EF476F', // Coral
+    '#06FFA5', // Mint Green
+    '#06D6A0'  // Sea Green
+  ],
+  REALTIME_HISTORY_HOURS: 3,
+  GEOCODE_CACHE: {}
+};
+
+// Ground truth state
+const STATE = {
+  mode: 'realtime',
+  startTime: null,
+  endTime: null,
+  isLiveMode: true,
+  selectedTime: null,
+  selectionStart: null,
+  selectionEnd: null,
+  isDragging: false,
+  zoomLevel: 1,
+  zoomStartTime: null,
+  zoomEndTime: null
+};
+
+// Data stores
+const DATA = {
+  devices: {},
+  deviceColors: {},
+  deviceNames: {},
+  history: {},
+  markers: {},
+  polylines: {},
+  tempMarkers: {},
+  movementSegments: {},
+  deviceVisibility: {} // Track which devices are visible
+};
+
+let map, liveInterval, initialZoomDone = false;
+let isTimelineCollapsed = false;
+let isLegendCollapsed = false;
+
+// Theme management
+function applyTheme(theme) {
+  if (theme === 'auto') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    theme = prefersDark ? 'dark' : 'light';
+  }
+  
+  if (theme === 'dark') {
+    document.body.classList.add('dark-mode');
+  } else {
+    document.body.classList.remove('dark-mode');
+  }
+  
+  localStorage.setItem('theme', document.getElementById('theme-select')?.value || 'auto');
+}
+
+function loadTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'auto';
+  const themeSelect = document.getElementById('theme-select');
+  if (themeSelect) {
+    themeSelect.value = savedTheme;
+  }
+  applyTheme(savedTheme);
+}
+
+// Watch for system theme changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  const currentTheme = localStorage.getItem('theme') || 'auto';
+  if (currentTheme === 'auto') {
+    applyTheme('auto');
+  }
+});
+
+// Initialize map
+function initMap() {
+  try {
+    map = L.map('map').setView([0, 0], 2);
+    map.zoomControl.setPosition('bottomright');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19
+    }).addTo(map);
+  } catch (err) {
+    console.error('Map initialization error:', err);
+    showError('Failed to initialize map. Please refresh the page.');
+    throw err;
+  }
+}
+
+// Error display function
+function showError(message, canRetry = false) {
+  const errorDiv = document.createElement('div');
+  errorDiv.id = 'error-notification';
+  errorDiv.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 10000;
+    text-align: center;
+    max-width: 400px;
+  `;
+  
+  errorDiv.innerHTML = `
+    <h3 style="margin: 0 0 12px 0; color: #E63946;">⚠️ Error</h3>
+    <p style="margin: 0 0 16px 0;">${message}</p>
+    ${canRetry ? '<button id="retry-btn" style="padding: 8px 16px; background: #4ECDC4; color: white; border: none; border-radius: 4px; cursor: pointer;">Retry</button>' : ''}
+    <button id="close-error-btn" style="padding: 8px 16px; background: #ccc; color: #333; border: none; border-radius: 4px; cursor: pointer; margin-left: 8px;">Close</button>
+  `;
+  
+  document.body.appendChild(errorDiv);
+  
+  const closeBtn = document.getElementById('close-error-btn');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      errorDiv.remove();
+    };
+  }
+  
+  return errorDiv;
+}
+
+// Utilities
+function safeRemove(layer) {
+  if (layer && map && map.hasLayer(layer)) {
+    try {
+      map.removeLayer(layer);
+    } catch (e) {
+      console.warn('Error removing layer:', e);
+    }
+  }
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  // Haversine formula for distance in meters
+  const R = 6371e3; // Earth radius in meters
+  const φ1 = lat1 * Math.PI / 180;
+  const φ2 = lat2 * Math.PI / 180;
+  const Δφ = (lat2 - lat1) * Math.PI / 180;
+  const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
+function getTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  
+  if (seconds < 60) return 'just now';
+  if (seconds < 120) return '1 minute ago';
+  if (seconds < 3600) return Math.floor(seconds / 60) + ' minutes ago';
+  if (seconds < 7200) return '1 hour ago';
+  if (seconds < 86400) return Math.floor(seconds / 3600) + ' hours ago';
+  if (seconds < 172800) return '1 day ago';
+  return Math.floor(seconds / 86400) + ' days ago';
+}
+
+function getStatusColor(lastUpdate) {
+  const minutesAgo = (new Date() - new Date(lastUpdate)) / (1000 * 60);
+  
+  if (minutesAgo < 2) return '#90EE90'; // Pastel green - online
+  if (minutesAgo < 15) return '#C0C0C0'; // Grey - recent
+  return '#FF6B6B'; // Red - offline
+}
+
+function formatAddress(addressData) {
+  if (!addressData || !addressData.address) return null;
+  
+  const addr = addressData.address;
+  const parts = [];
+  
+  // Address line 1 (street number + street name)
+  const street = [addr.house_number, addr.road].filter(Boolean).join(' ');
+  if (street) parts.push(street);
+  
+  // Town/City
+  const city = addr.city || addr.town || addr.village || addr.municipality;
+  if (city) parts.push(city);
+  
+  // County
+  if (addr.county) parts.push(addr.county);
+  
+  // Postcode
+  if (addr.postcode) parts.push(addr.postcode);
+  
+  // Country
+  if (addr.country) parts.push(addr.country);
+  
+  return parts.length > 0 ? parts.join(', ') : null;
+}
+
+function getCardinalDirection(degrees) {
+  if (degrees == null) return null;
+  
+  const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const index = Math.round(((degrees % 360) / 45)) % 8;
+  return directions[index];
+}
+
+function getDirectionArrow(degrees) {
+  if (degrees == null) return '⊙';
+  
+  // Unicode arrows for 8 directions
+  const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '�↖'];
+  const index = Math.round(((degrees % 360) / 45)) % 8;
+  return arrows[index];
+}
+
+function formatSpeed(speedKnots) {
+  if (speedKnots == null) return null;
+  const kmh = speedKnots * 1.852;
+  return kmh.toFixed(1) + ' km/h';
+}
+
+function formatDistance(meters) {
+  if (meters == null) return null;
+  if (meters < 1000) return meters.toFixed(0) + ' m';
+  return (meters / 1000).toFixed(2) + ' km';
+}
+
+function createPopupContent(deviceId, positionData) {
+  const deviceName = DATA.deviceNames[deviceId];
+  const timestamp = positionData.timestamp;
+  const attrs = positionData.attributes || {};
+  
+  let content = `
+    <div style="min-width: 220px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+      <div style="border-bottom: 2px solid ${DATA.deviceColors[deviceId]}; padding-bottom: 6px; margin-bottom: 8px;">
+        <strong style="font-size: 15px;">${deviceName}</strong>
+      </div>
+      
+      <div style="font-size: 11px; margin-bottom: 8px;">
+        <div style="margin-bottom: 3px;">📅 ${timestamp.toLocaleString()}</div>
+        <div>(${getTimeAgo(timestamp)})</div>
+      </div>
+  `;
+  
+  // Motion & Speed
+  if (positionData.speed != null || attrs.motion != null) {
+    content += `<div class="map-marker-details">`;
+    
+    if (attrs.motion != null) {
+      const motionIcon = attrs.motion ? '🚗' : '🅿️';
+      const motionText = attrs.motion ? 'Moving' : 'Stationary';
+      content += `<div style="margin-bottom: 2px;">${motionIcon} <strong>${motionText}</strong></div>`;
+    }
+    
+    if (positionData.speed != null && positionData.speed > 0) {
+      content += `<div>⚡ Speed: <strong>${formatSpeed(positionData.speed)}</strong></div>`;
+    }
+    
+    content += `</div>`;
+  }
+  
+  // Course/Direction
+  if (positionData.course != null) {
+    const arrow = getDirectionArrow(positionData.course);
+    const direction = getCardinalDirection(positionData.course);
+    content += `
+      <div class="map-marker-details">
+        <span style="font-size: 16px;">${arrow}</span> 
+        Heading: <strong>${direction}</strong> (${positionData.course.toFixed(0)}°)
+      </div>
+    `;
+  }
+  
+  // Battery Level
+  if (attrs.batteryLevel != null) {
+    const batteryIcon = attrs.batteryLevel > 80 ? '🔋' : attrs.batteryLevel > 20 ? '🔋' : '🪫';
+    const batteryColor = attrs.batteryLevel > 20 ? '#28a745' : '#dc3545';
+    content += `
+      <div class="map-marker-details">
+        ${batteryIcon} Battery: <strong style="color: ${batteryColor};">${attrs.batteryLevel}%</strong>
+      </div>
+    `;
+  }
+  
+  // Distance & Total Distance
+  if (attrs.distance != null || attrs.totalDistance != null) {
+    content += `<div class="map-marker-details">`;
+    
+    if (attrs.distance != null) {
+      content += `<div style="margin-bottom: 2px;">📏 Trip: <strong>${formatDistance(attrs.distance)}</strong></div>`;
+    }
+    
+    if (attrs.totalDistance != null) {
+      content += `<div>🛣️ Total: <strong>${formatDistance(attrs.totalDistance)}</strong></div>`;
+    }
+    
+    content += `</div>`;
+  }
+  
+  // Accuracy
+  if (positionData.accuracy != null) {
+    content += `
+      <div class="map-marker-details">
+        🎯 Accuracy: <strong>±${positionData.accuracy.toFixed(1)} m</strong>
+      </div>
+    `;
+  }
+  
+  // Address placeholder
+  content += `
+    <div id="address-${deviceId}" class="map-marker-details" style="border-radius: 3px; border-left: 3px solid ${DATA.deviceColors[deviceId]};">
+      <em>Loading address...</em>
+    </div>
+  `;
+  
+  content += `</div>`;
+  
+  return content;
+}
+
+async function reverseGeocode(lat, lon) {
+  const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
+  
+  // Check cache
+  if (CONFIG.GEOCODE_CACHE[key]) {
+    return CONFIG.GEOCODE_CACHE[key];
+  }
+  
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'TraccarMapTimeline/1.0'
+      }
+    });
+    
+    if (!res.ok) throw new Error('Geocoding failed');
+    
+    const data = await res.json();
+    const address = formatAddress(data);
+    
+    // Cache result
+    CONFIG.GEOCODE_CACHE[key] = address;
+    
+    return address;
+  } catch (err) {
+    console.warn('Geocoding error:', err);
+    return null;
+  }
+}
+
+function detectMovementSegments(deviceId) {
+  const points = DATA.history[deviceId];
+  if (!points || points.length < 2) return [];
+
+  const segments = [];
+  let currentSegment = null;
+
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i - 1];
+    const curr = points[i];
+    
+    const distance = calculateDistance(
+      prev.coords[0], prev.coords[1],
+      curr.coords[0], curr.coords[1]
+    );
+
+    const isMoving = distance > CONFIG.MOVEMENT_THRESHOLD_M;
+
+    if (isMoving) {
+      if (!currentSegment) {
+        currentSegment = {
+          start: prev.timestamp,
+          end: curr.timestamp
+        };
+      } else {
+        currentSegment.end = curr.timestamp;
+      }
+    } else {
+      if (currentSegment) {
+        segments.push(currentSegment);
+        currentSegment = null;
+      }
+    }
+  }
+
+  if (currentSegment) {
+    segments.push(currentSegment);
+  }
+
+  return segments;
+}
+
+// Legend
+function updateLegend(highlighted = []) {
+  const legend = document.getElementById('legend-items');
+  legend.innerHTML = '';
+  
+  Object.keys(DATA.deviceNames).forEach((id) => {
+    const device = DATA.devices[id];
+    const lastUpdate = device ? new Date(device.lastUpdate) : null;
+    const statusColor = lastUpdate ? getStatusColor(device.lastUpdate) : '#C0C0C0';
+    const timeAgo = lastUpdate ? getTimeAgo(lastUpdate) : 'unknown';
+    const isVisible = DATA.deviceVisibility[id] !== false;
+    
+    const div = document.createElement('div');
+    div.className = 'legend-item' + (isVisible ? '' : ' disabled');
+    div.innerHTML = `
+      <div class="color-box" style="background:${isVisible ? DATA.deviceColors[id] : '#999'}"></div>
+      <span class="legend-item-name">${DATA.deviceNames[id]}</span>
+      <span class="legend-item-status">
+        <span class="status-indicator" style="background:${statusColor}"></span>
+        ${timeAgo}
+      </span>
+    `;
+    
+    if (highlighted.includes(id)) {
+      div.style.fontWeight = 'bold';
+      div.style.background = '#99999923';
+    }
+    
+    div.addEventListener('click', () => {
+      if (DATA.markers[id]) {
+        map.setView(DATA.markers[id].getLatLng(), 15);
+        DATA.markers[id].openPopup();
+      }
+    });
+    
+    legend.appendChild(div);
+  });
+}
+
+// Update legend periodically
+setInterval(() => {
+  updateLegend();
+}, 10000); // Update every 10 seconds
+
+// Toggle device visibility
+function toggleDeviceVisibility(deviceId, exclusive = false) {
+  if (exclusive) {
+    // Double-click: show only this device
+    Object.keys(DATA.deviceVisibility).forEach(id => {
+      DATA.deviceVisibility[id] = (id === deviceId);
+    });
+  } else {
+    // Single click: toggle this device
+    DATA.deviceVisibility[deviceId] = !DATA.deviceVisibility[deviceId];
+  }
+  
+  // Update map visibility
+  Object.keys(DATA.deviceVisibility).forEach(id => {
+    const isVisible = DATA.deviceVisibility[id];
+    
+    // Toggle markers
+    if (DATA.markers[id]) {
+      if (isVisible && !map.hasLayer(DATA.markers[id])) {
+        DATA.markers[id].addTo(map);
+      } else if (!isVisible && map.hasLayer(DATA.markers[id])) {
+        map.removeLayer(DATA.markers[id]);
+      }
+    }
+    
+    // Toggle polylines
+    if (DATA.polylines[id]) {
+      DATA.polylines[id].forEach(segment => {
+        if (isVisible && !map.hasLayer(segment)) {
+          segment.addTo(map);
+        } else if (!isVisible && map.hasLayer(segment)) {
+          map.removeLayer(segment);
+        }
+      });
+    }
+  });
+  
+  updateLegend();
+  drawTimeline();
+}
+
+// Fetch devices
+async function fetchDevices() {
+  try {
+    const res = await fetch(CONFIG.API_URL + 'devices');
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+    
+    const devices = await res.json();
+    
+    if (!devices || devices.length === 0) {
+      console.warn('No devices found');
+      showError('No tracking devices found. Please ensure devices are configured in Traccar.', false);
+      return;
+    }
+    
+    devices.forEach((d, idx) => {
+      DATA.devices[d.id] = d;
+      DATA.deviceNames[d.id] = d.name;
+      DATA.deviceColors[d.id] = CONFIG.PALETTE[idx % CONFIG.PALETTE.length];
+      DATA.deviceVisibility[d.id] = true; // All devices visible by default
+    });
+    
+    updateLegend();
+  } catch (err) {
+    console.error('Error fetching devices:', err);
+    const errorDiv = showError(`Failed to connect to Traccar API: ${err.message}<br><br>Please check:<br>• API URL is correct<br>• Traccar server is running<br>• You are logged in to Traccar`, true);
+    
+    const retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) {
+      retryBtn.onclick = () => {
+        errorDiv.remove();
+        fetchDevices();
+      };
+    }
+    throw err;
+  }
+}
+
+// Clear map
+function clearMap() {
+  Object.values(DATA.markers).forEach(safeRemove);
+  Object.values(DATA.tempMarkers).forEach(safeRemove);
+  Object.values(DATA.polylines).forEach(segments => {
+    if (segments) segments.forEach(safeRemove);
+  });
+
+  DATA.markers = {};
+  DATA.tempMarkers = {};
+  DATA.polylines = {};
+  DATA.history = {};
+  DATA.movementSegments = {};
+}
+
+// Fetch history
+async function fetchHistoryForRange(fromTime, toTime) {
+  clearMap();
+  
+  STATE.startTime = new Date(fromTime);
+  STATE.endTime = new Date(toTime);
+  
+  const allLatLngs = [];
+  
+  try {
+    await Promise.all(Object.keys(DATA.deviceNames).map(async (id) => {
+      try {
+        const url = `${CONFIG.API_URL}positions?deviceId=${id}&from=${fromTime}&to=${toTime}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          console.warn(`Failed to fetch positions for device ${id}: HTTP ${res.status}`);
+          return;
+        }
+        
+        const positions = await res.json();
+        if (!positions || !positions.length) {
+          console.info(`No positions found for device ${DATA.deviceNames[id]} in selected time range`);
+          return;
+        }
+        
+        DATA.history[id] = positions.map(p => ({
+          coords: [p.latitude, p.longitude],
+          timestamp: new Date(p.serverTime || p.fixTime),
+          speed: p.speed,
+          course: p.course,
+          accuracy: p.accuracy,
+          attributes: p.attributes || {}
+        }));
+
+        // Sort by timestamp
+        DATA.history[id].sort((a, b) => a.timestamp - b.timestamp);
+
+        // Detect movement segments
+        DATA.movementSegments[id] = detectMovementSegments(id);
+
+        // Draw gradient polyline
+        DATA.history[id].forEach((h, i) => {
+          if (i === 0) return;
+          const opacity = 0.3 + 0.7 * (i / DATA.history[id].length);
+          const segment = L.polyline(
+            [DATA.history[id][i - 1].coords, h.coords],
+            { color: DATA.deviceColors[id], opacity, weight: 3 }
+          );
+          segment.addTo(map);
+          
+          if (!DATA.polylines[id]) DATA.polylines[id] = [];
+          DATA.polylines[id].push(segment);
+        });
+
+        // Latest marker with enhanced popup
+        const last = DATA.history[id][DATA.history[id].length - 1];
+        const lastCoords = last.coords;
+        
+        const marker = L.circleMarker(lastCoords, {
+          radius: 8,
+          color: DATA.deviceColors[id],
+          fillColor: DATA.deviceColors[id],
+          fillOpacity: 0.9,
+          weight: 2
+        }).addTo(map);
+        
+        // Create popup content with all available data
+        const popupContent = createPopupContent(id, last);
+        marker.bindPopup(popupContent);
+        DATA.markers[id] = marker;
+        
+        // Fetch address asynchronously and update
+        reverseGeocode(lastCoords[0], lastCoords[1]).then(address => {
+          const addressDiv = document.getElementById(`address-${id}`);
+          if (addressDiv && address) {
+            addressDiv.innerHTML = `📍 ${address}`;
+          } else if (addressDiv) {
+            addressDiv.innerHTML = `📍 <em>Address unavailable</em>`;
+          }
+        }).catch(err => {
+          console.warn('Geocoding error:', err);
+        });
+        
+        allLatLngs.push(...DATA.history[id].map(h => h.coords));
+      } catch (err) {
+        console.error(`Error fetching history for device ${id}:`, err);
+      }
+    }));
+
+    if (allLatLngs.length && !initialZoomDone) {
+      map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] });
+      initialZoomDone = true;
+    } else if (allLatLngs.length) {
+      // Always fit bounds for new data, even after initial zoom
+      map.fitBounds(L.latLngBounds(allLatLngs), { padding: [50, 50] });
+    } else {
+      console.warn('No position data found for any devices in the selected time range');
+      showError('No position data found for the selected time range.', false);
+    }
+
+    drawTimeline();
+    updateTimelineTitle();
+  } catch (err) {
+    console.error('Error in fetchHistoryForRange:', err);
+    showError(`Failed to fetch position history: ${err.message}`, true);
+    
+    const retryBtn = document.getElementById('retry-btn');
+    if (retryBtn) {
+      retryBtn.onclick = () => {
+        document.getElementById('error-notification')?.remove();
+        fetchHistoryForRange(fromTime, toTime);
+      };
+    }
+  }
+}
+
+// Timeline rendering
+function drawTimeline() {
+  const timeline = document.getElementById('timeline');
+  const labelsContainer = document.getElementById('timeline-labels');
+  
+  timeline.innerHTML = '';
+  labelsContainer.innerHTML = '';
+
+  if (!STATE.startTime || !STATE.endTime) return;
+
+  const durationMs = STATE.endTime - STATE.startTime;
+  const durationHours = durationMs / (1000 * 60 * 60);
+
+  // Determine tick granularity
+  let tickInterval, formatFn;
+  
+  if (durationHours <= 6) {
+    // Show every hour for 6 hours or less
+    tickInterval = 60 * 60 * 1000;
+    formatFn = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else if (durationHours <= 24) {
+    // Show every 4 hours for a day
+    tickInterval = 4 * 60 * 60 * 1000;
+    formatFn = (date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else if (durationHours <= 24 * 3) {
+    // Show every 12 hours for 3 days
+    tickInterval = 12 * 60 * 60 * 1000;
+    formatFn = (date) => date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + 
+                        date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else if (durationHours <= 24 * 7) {
+    // Show days for week
+    tickInterval = 24 * 60 * 60 * 1000;
+    formatFn = (date) => date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } else {
+    // Show every few days for month+
+    const numTicks = 8;
+    tickInterval = Math.ceil(durationMs / numTicks);
+    formatFn = (date) => date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  // Draw tick labels with safe boundaries
+  const tickStart = STATE.startTime.getTime();
+  const tickEnd = STATE.endTime.getTime();
+  
+  for (let t = tickStart; t <= tickEnd; t += tickInterval) {
+    const xPercent = ((t - STATE.startTime) / durationMs) * 100;
+    
+    // Don't render ticks that would overflow
+    if (xPercent < 2 || xPercent > 98) continue;
+    
+    const label = document.createElement('div');
+    label.className = 'timeline-tick-label';
+    label.style.left = xPercent + '%';
+    label.textContent = formatFn(new Date(t));
+    labelsContainer.appendChild(label);
+  }
+
+  // Draw movement tracks with device names
+  const deviceIds = Object.keys(DATA.movementSegments);
+  const trackHeight = 8;
+  const trackSpacing = 2;
+  const labelOffset = 4;
+  
+  deviceIds.forEach((deviceId, idx) => {
+    const segments = DATA.movementSegments[deviceId];
+    const yPos = idx * (trackHeight + trackSpacing) + trackSpacing;
+    
+    const timelineDevice = document.createElement('div');
+    timelineDevice.className = 'timeline-device-row';
+
+    // Add device name label at the start
+    const nameLabel = document.createElement('div');
+    nameLabel.className = 'timeline-device-label';
+    //nameLabel.style.left = '2px';
+    //nameLabel.style.top = (yPos + 1) + 'px';
+    nameLabel.textContent = DATA.deviceNames[deviceId];
+    nameLabel.style.color = DATA.deviceColors[deviceId];
+    timelineDevice.appendChild(nameLabel);
+    
+    segments.forEach(segment => {
+      const startPercent = ((segment.start - STATE.startTime) / durationMs) * 100;
+      const endPercent = ((segment.end - STATE.startTime) / durationMs) * 100;
+      const widthPercent = endPercent - startPercent;
+      
+      if (widthPercent > 0) {
+        const track = document.createElement('div');
+        track.className = 'timeline-track';
+        track.style.left = startPercent + '%';
+        track.style.width = widthPercent + '%';
+        //track.style.top = yPos + 'px';
+        //track.style.height = trackHeight + 'px';
+        track.style.background = DATA.deviceColors[deviceId];
+        track.title = `${DATA.deviceNames[deviceId]}: ${segment.start.toLocaleString()} - ${segment.end.toLocaleString()}`;
+        timelineDevice.appendChild(track);
+      }
+    });
+    
+    timeline.appendChild(timelineDevice);  
+  });
+
+  // Hover and click interaction
+  timeline.onmousemove = (e) => {
+    if (STATE.timelineLocked) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const xPercent = (e.clientX - rect.left) / rect.width;
+    const scrubber = document.getElementById('scrubber');
+    scrubber.style.left = `${Math.min(Math.max(xPercent * 100, 0), 100)}%`;
+    
+    const hoverTime = new Date(STATE.startTime.getTime() + xPercent * durationMs);
+    updateTimelineMarkers(hoverTime);
+  };
+
+  timeline.onmouseleave = () => {
+    if (STATE.timelineLocked) return;
+    
+    document.getElementById('scrubber').style.left = '-2px';
+    clearTimelineMarkers();
+  };
+  
+  timeline.onclick = (e) => {
+    const rect = timeline.getBoundingClientRect();
+    const xPercent = (e.clientX - rect.left) / rect.width;
+    const clickTime = new Date(STATE.startTime.getTime() + xPercent * durationMs);
+    
+    // Lock timeline at this point
+    STATE.timelineLocked = true;
+    STATE.lockedTime = clickTime;
+    
+    const scrubber = document.getElementById('scrubber');
+    scrubber.classList.add('locked');
+    scrubber.style.left = `${Math.min(Math.max(xPercent * 100, 0), 100)}%`;
+    
+    updateTimelineMarkers(clickTime, true);
+  };
+}
+
+function setupTimelineInteractions(displayStart, displayEnd, durationMs) {
+  const timeline = document.getElementById('timeline');
+  const scrubber = document.getElementById('scrubber');
+  
+  let clickTimeout = null;
+  let preventClick = false;
+  
+  // Mouse move for hover preview
+  timeline.onmousemove = (e) => {
+    if (STATE.isDragging) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const xPercent = (e.clientX - rect.left) / rect.width;
+    scrubber.style.left = `${Math.min(Math.max(xPercent * 100, 0), 100)}%`;
+    
+    const hoverTime = new Date(displayStart.getTime() + xPercent * durationMs);
+    updateTimelineMarkers(hoverTime);
+  };
+
+  // Mouse leave
+  timeline.onmouseleave = () => {
+    if (STATE.isDragging) return;
+    
+    if (STATE.selectedTime) {
+      const displayStartTime = STATE.zoomStartTime || STATE.startTime;
+      const displayEndTime = STATE.zoomEndTime || STATE.endTime;
+      const displayDuration = displayEndTime - displayStartTime;
+      const xPercent = ((STATE.selectedTime - displayStartTime) / displayDuration) * 100;
+      scrubber.style.left = `${xPercent}%`;
+      scrubber.classList.add('selected');
+      updateTimelineMarkers(STATE.selectedTime, true);
+    } else {
+      scrubber.style.left = '-2px';
+      clearTimelineMarkers();
+    }
+  };
+  
+  // Mouse down - start potential drag
+  timeline.onmousedown = (e) => {
+    e.preventDefault();
+    preventClick = false;
+    
+    const rect = timeline.getBoundingClientRect();
+    const startX = e.clientX;
+    const xPercent = (e.clientX - rect.left) / rect.width;
+    const dragStart = new Date(displayStart.getTime() + xPercent * durationMs);
+    
+    let hasMoved = false;
+    
+    const onMouseMove = (moveEvent) => {
+      const distance = Math.abs(moveEvent.clientX - startX);
+      
+      if (distance > 3 && !hasMoved) {
+        // Start dragging
+        hasMoved = true;
+        STATE.isDragging = true;
+        STATE.selectionStart = dragStart;
+        STATE.selectionEnd = dragStart;
+        clearSelection();
+        preventClick = true;
+      }
+      
+      if (STATE.isDragging) {
+        const moveRect = timeline.getBoundingClientRect();
+        const moveXPercent = (moveEvent.clientX - moveRect.left) / moveRect.width;
+        STATE.selectionEnd = new Date(displayStart.getTime() + moveXPercent * durationMs);
+        drawTimeline();
+      }
+    };
+    
+    const onMouseUp = (upEvent) => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      
+      if (STATE.isDragging) {
+        STATE.isDragging = false;
+        
+        // Check if drag was significant
+        const dragDuration = Math.abs(STATE.selectionEnd - STATE.selectionStart);
+        if (dragDuration > 60000) {
+          // Zoom to selection
+          const start = Math.min(STATE.selectionStart, STATE.selectionEnd);
+          const end = Math.max(STATE.selectionStart, STATE.selectionEnd);
+          
+          STATE.zoomStartTime = new Date(start);
+          STATE.zoomEndTime = new Date(end);
+          STATE.zoomLevel++;
+          STATE.selectionStart = null;
+          STATE.selectionEnd = null;
+          
+          drawTimeline();
+          updateTimelineTitle();
+          showResetButton();
+        } else {
+          STATE.selectionStart = null;
+          STATE.selectionEnd = null;
+          drawTimeline();
+        }
+      }
+    };
+    
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+  
+  // Single click - select time point
+  timeline.onclick = (e) => {
+    if (preventClick || STATE.isDragging) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const xPercent = (e.clientX - rect.left) / rect.width;
+    const clickTime = new Date(displayStart.getTime() + xPercent * durationMs);
+    
+    // Clear any existing double-click timeout
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+      return; // This is a double-click, ignore single click
+    }
+    
+    // Set timeout to handle single click
+    clickTimeout = setTimeout(() => {
+      clickTimeout = null;
+      
+      STATE.selectedTime = clickTime;
+      
+      scrubber.classList.add('selected');
+      scrubber.style.left = `${Math.min(Math.max(xPercent * 100, 0), 100)}%`;
+      
+      updateTimelineMarkers(clickTime, true);
+      updateTimelineTitle();
+      showResetButton();
+    }, 250);
+  };
+  
+  // Double click - zoom to 50% around point
+  timeline.ondblclick = (e) => {
+    if (clickTimeout) {
+      clearTimeout(clickTimeout);
+      clickTimeout = null;
+    }
+    
+    const rect = timeline.getBoundingClientRect();
+    const xPercent = (e.clientX - rect.left) / rect.width;
+    const clickTime = new Date(displayStart.getTime() + xPercent * durationMs);
+    
+    const currentRange = displayEnd - displayStart;
+    const zoomRange = currentRange * 0.25; // 50% zoom = 25% on each side
+    
+    STATE.zoomStartTime = new Date(Math.max(clickTime.getTime() - zoomRange, STATE.startTime.getTime()));
+    STATE.zoomEndTime = new Date(Math.min(clickTime.getTime() + zoomRange, STATE.endTime.getTime()));
+    STATE.zoomLevel++;
+    
+    clearSelection();
+    drawTimeline();
+    updateTimelineTitle();
+    showResetButton();
+  };
+}
+
+function showResetButton() {
+  const controls = document.getElementById('timeline-controls');
+  controls.style.display = 'flex';
+}
+
+function updateTimelineMarkers(time, select = false) {
+  const highlighted = [];
+  
+  Object.keys(DATA.history).forEach(id => {
+    const points = DATA.history[id];
+    if (!points || !points.length) return;
+    
+    const nearest = points.reduce((prev, curr) => {
+      return (!prev || Math.abs(curr.timestamp - time) < Math.abs(prev.timestamp - time)) ? curr : prev;
+    }, null);
+    
+    if (nearest && Math.abs(nearest.timestamp - time) <= 5 * 60 * 1000) {
+      highlighted.push(id);
+      
+      if (!DATA.tempMarkers[id]) {
+        const marker = L.circleMarker(nearest.coords, {
+          radius: 8,
+          color: DATA.deviceColors[id],
+          fillColor: DATA.deviceColors[id],
+          fillOpacity: 0.9,
+          weight: 2
+        }).addTo(map);
+        
+        if (select) {
+          const popupContent = createPopupContent(id, nearest);
+          marker.bindPopup(popupContent);
+          
+          reverseGeocode(nearest.coords[0], nearest.coords[1]).then(address => {
+            const addressDiv = document.getElementById(`address-${id}`);
+            if (addressDiv && address) {
+              addressDiv.innerHTML = `📍 ${address}`;
+            } else if (addressDiv) {
+              addressDiv.innerHTML = `📍 <em>Address unavailable</em>`;
+            }
+          });
+        }
+        
+        DATA.tempMarkers[id] = marker;
+      } else {
+        DATA.tempMarkers[id].setLatLng(nearest.coords);
+        
+        if (select) {
+          const popupContent = createPopupContent(id, nearest);
+          DATA.tempMarkers[id].bindPopup(popupContent);
+          
+          reverseGeocode(nearest.coords[0], nearest.coords[1]).then(address => {
+            const addressDiv = document.getElementById(`address-${id}`);
+            if (addressDiv && address) {
+              addressDiv.innerHTML = `📍 ${address}`;
+            } else if (addressDiv) {
+              addressDiv.innerHTML = `📍 <em>Address unavailable</em>`;
+            }
+          });
+        }
+      }
+      
+      if (DATA.markers[id] && map.hasLayer(DATA.markers[id])) {
+        safeRemove(DATA.markers[id]);
+      }
+    } else {
+      if (DATA.tempMarkers[id]) {
+        safeRemove(DATA.tempMarkers[id]);
+        DATA.tempMarkers[id] = null;
+      }
+    }
+  });
+  
+  updateLegend(highlighted);
+}
+
+function clearSelection() {
+  STATE.selectedTime = null;
+  STATE.selectionStart = null;
+  STATE.selectionEnd = null;
+  
+  const scrubber = document.getElementById('scrubber');
+  scrubber.classList.remove('selected');
+  scrubber.style.left = '-2px';
+  
+  clearTimelineMarkers();
+  updateTimelineTitle();
+  
+  // Hide reset button if not zoomed
+  if (STATE.zoomLevel <= 1) {
+    document.getElementById('timeline-controls').style.display = 'none';
+  }
+}
+
+function resetTimeline() {
+  // Reset zoom
+  STATE.zoomStartTime = null;
+  STATE.zoomEndTime = null;
+  STATE.zoomLevel = 1;
+  
+  // Clear selection
+  clearSelection();
+  
+  // Hide controls
+  document.getElementById('timeline-controls').style.display = 'none';
+  
+  // Redraw
+  drawTimeline();
+  updateTimelineTitle();
+}
+
+function zoomToSelection() {
+  if (!STATE.selectionStart || !STATE.selectionEnd) return;
+  
+  const start = Math.min(STATE.selectionStart, STATE.selectionEnd);
+  const end = Math.max(STATE.selectionStart, STATE.selectionEnd);
+  
+  STATE.zoomStartTime = new Date(start);
+  STATE.zoomEndTime = new Date(end);
+  STATE.zoomLevel++;
+  
+  clearSelection();
+  drawTimeline();
+}
+
+function resetZoom() {
+  STATE.zoomStartTime = null;
+  STATE.zoomEndTime = null;
+  STATE.zoomLevel = 1;
+  clearSelection();
+  drawTimeline();
+}
+
+function clearTimelineMarkers() {
+  Object.keys(DATA.tempMarkers).forEach(id => {
+    if (DATA.tempMarkers[id]) {
+      safeRemove(DATA.tempMarkers[id]);
+      DATA.tempMarkers[id] = null;
+    }
+    if (DATA.markers[id] && !map.hasLayer(DATA.markers[id])) {
+      DATA.markers[id].addTo(map);
+    }
+  });
+  updateLegend([]);
+}
+
+// Live updates
+async function fetchLive() {
+  if (!STATE.isLiveMode) return;
+  
+  try {
+    const res = await fetch(CONFIG.API_URL + 'positions');
+    if (!res.ok) {
+      console.warn(`Live position fetch failed: HTTP ${res.status}`);
+      return;
+    }
+    
+    const positions = await res.json();
+    
+    for (const device of positions) {
+      const id = device.deviceId;
+      const latlng = [device.latitude, device.longitude];
+      const positionData = {
+        coords: latlng,
+        timestamp: new Date(device.serverTime || device.fixTime),
+        speed: device.speed,
+        course: device.course,
+        accuracy: device.accuracy,
+        attributes: device.attributes || {}
+      };
+
+      if (DATA.markers[id] && !DATA.tempMarkers[id]) {
+        DATA.markers[id].setLatLng(latlng);
+        
+        // Update popup with new info
+        const popupContent = createPopupContent(id, positionData);
+        DATA.markers[id].setPopupContent(popupContent);
+        
+        // Fetch address
+        reverseGeocode(latlng[0], latlng[1]).then(address => {
+          const addressDiv = document.getElementById(`address-${id}`);
+          if (addressDiv && address) {
+            addressDiv.innerHTML = `📍 ${address}`;
+          } else if (addressDiv) {
+            addressDiv.innerHTML = `📍 <em>Address unavailable</em>`;
+          }
+        }).catch(err => {
+          console.warn('Geocoding error:', err);
+        });
+      } else if (!DATA.markers[id]) {
+        const marker = L.circleMarker(latlng, {
+          radius: 8,
+          color: DATA.deviceColors[id],
+          fillColor: DATA.deviceColors[id],
+          fillOpacity: 0.9,
+          weight: 2
+        }).addTo(map);
+        
+        const popupContent = createPopupContent(id, positionData);
+        marker.bindPopup(popupContent);
+        DATA.markers[id] = marker;
+        
+        // Fetch address
+        reverseGeocode(latlng[0], latlng[1]).then(address => {
+          const addressDiv = document.getElementById(`address-${id}`);
+          if (addressDiv && address) {
+            addressDiv.innerHTML = `📍 ${address}`;
+          } else if (addressDiv) {
+            addressDiv.innerHTML = `📍 <em>Address unavailable</em>`;
+          }
+        }).catch(err => {
+          console.warn('Geocoding error:', err);
+        });
+      }
+
+      if (!DATA.history[id]) DATA.history[id] = [];
+      
+      const last = DATA.history[id][DATA.history[id].length - 1];
+      if (!last || last.coords[0] !== latlng[0] || last.coords[1] !== latlng[1]) {
+        DATA.history[id].push(positionData);
+        
+        const i = DATA.history[id].length - 1;
+        if (i > 0) {
+          const prev = DATA.history[id][i - 1];
+          const opacity = 0.3 + 0.7 * (i / DATA.history[id].length);
+          const segment = L.polyline([prev.coords, latlng], {
+            color: DATA.deviceColors[id],
+            opacity,
+            weight: 3
+          }).addTo(map);
+          
+          if (!DATA.polylines[id]) DATA.polylines[id] = [];
+          DATA.polylines[id].push(segment);
+          
+          // Update movement segments
+          const distance = calculateDistance(
+            prev.coords[0], prev.coords[1],
+            latlng[0], latlng[1]
+          );
+          
+          if (distance > CONFIG.MOVEMENT_THRESHOLD_M) {
+            if (!DATA.movementSegments[id]) DATA.movementSegments[id] = [];
+            const lastSeg = DATA.movementSegments[id][DATA.movementSegments[id].length - 1];
+            
+            if (lastSeg && (positionData.timestamp - lastSeg.end) < 60000) {
+              lastSeg.end = positionData.timestamp;
+            } else {
+              DATA.movementSegments[id].push({
+                start: prev.timestamp,
+                end: positionData.timestamp
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    // Update device status from fresh device data
+    try {
+      const devicesRes = await fetch(CONFIG.API_URL + 'devices');
+      if (devicesRes.ok) {
+        const devices = await devicesRes.json();
+        devices.forEach(d => {
+          DATA.devices[d.id] = d;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to update device status:', err);
+    }
+    
+    // Redraw timeline in real-time mode
+    if (STATE.mode === 'realtime') {
+      STATE.endTime = new Date();
+      drawTimeline();
+    }
+    
+    // Update legend with new status
+    updateLegend();
+  } catch (err) {
+    console.error('Error fetching live positions:', err);
+    // Don't show error modal for live updates - just log it
+  }
+}
+
+// Timeline title
+function updateTimelineTitle() {
+  const select = document.getElementById('time-range');
+  const title = document.getElementById('timeline-title-center');
+  
+  let titleText = '';
+  
+  if (STATE.selectedTime) {
+    // Show selected timestamp
+    titleText = `Selected: ${STATE.selectedTime.toLocaleString([], { 
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+    })}`;
+  } else if (STATE.mode === 'custom') {
+    titleText = `${STATE.startTime.toLocaleString([], { 
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+    })} → ${STATE.endTime.toLocaleString([], { 
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+    })}`;
+  } else {
+    titleText = select.options[select.selectedIndex].text;
+  }
+  
+  // Add zoom level if zoomed
+  if (STATE.zoomLevel > 1) {
+    titleText += ` (Zoomed)`;
+  }
+  
+  title.textContent = titleText;
+}
+
+// Auto-populate date inputs
+function setupDateInputs() {
+  const fromInput = document.getElementById('custom-from');
+  const toInput = document.getElementById('custom-to');
+  
+  fromInput.addEventListener('change', () => {
+    if (!toInput.value && fromInput.value) {
+      // Auto-populate TO as 24 hours after FROM at 23:59
+      const from = new Date(fromInput.value);
+      const to = new Date(from.getTime() + 24 * 60 * 60 * 1000);
+      to.setHours(23, 59, 0, 0);
+      toInput.value = formatDateTimeLocal(to);
+    }
+  });
+  
+  toInput.addEventListener('change', () => {
+    if (!fromInput.value && toInput.value) {
+      // Auto-populate FROM as 24 hours before TO at 00:00
+      const to = new Date(toInput.value);
+      const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
+      from.setHours(0, 0, 0, 0);
+      fromInput.value = formatDateTimeLocal(from);
+    }
+  });
+}
+
+function formatDateTimeLocal(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+// Setup all event listeners
+function setupEventListeners() {
+  // Timeline controls
+  document.getElementById('reset-timeline-btn').onclick = () => {
+    resetTimeline();
+  };
+
+  // Timeline collapse
+  document.getElementById('timeline-collapse-btn').onclick = () => {
+    isTimelineCollapsed = !isTimelineCollapsed;
+    const btn = document.getElementById('timeline-collapse-btn');
+    const timeline = document.getElementById('timeline');
+    
+    if (isTimelineCollapsed) {
+      btn.textContent = '▲';
+      timeline.classList.add('collapsed');
+    } else {
+      btn.textContent = '▼';
+      timeline.classList.remove('collapsed');
+    }
+    
+    drawTimeline();
+  };
+
+  // Legend collapse
+  document.getElementById('legend-toggle-btn').onclick = () => {
+    isLegendCollapsed = !isLegendCollapsed;
+    const btn = document.getElementById('legend-toggle-btn');
+    const items = document.getElementById('legend-items');
+    
+    if (isLegendCollapsed) {
+      btn.textContent = '▶';
+      items.classList.add('collapsed');
+    } else {
+      btn.textContent = '▼';
+      items.classList.remove('collapsed');
+    }
+  };
+
+  // Settings
+  document.getElementById('settings-btn').onclick = () => {
+    document.getElementById('settings-modal').style.display = 'flex';
+  };
+
+  document.getElementById('close-settings').onclick = () => {
+    document.getElementById('settings-modal').style.display = 'none';
+  };
+
+  document.getElementById('theme-select').onchange = function() {
+    applyTheme(this.value);
+  };
+
+  // Close settings when clicking outside
+  document.getElementById('settings-modal').onclick = (e) => {
+    if (e.target.id === 'settings-modal') {
+      document.getElementById('settings-modal').style.display = 'none';
+    }
+  };
+
+  // Time range selector
+  document.getElementById('time-range').onchange = function() {
+    STATE.mode = this.value;
+    const customDiv = document.getElementById('custom-time');
+    const changeTimeBtn = document.getElementById('change-time-btn');
+    
+    clearSelection();
+    resetZoom();
+    
+    if (this.value === 'custom') {
+      customDiv.style.display = 'block';
+      changeTimeBtn.style.display = 'inline-block';
+      STATE.isLiveMode = false;
+      return;
+    }
+    
+    customDiv.style.display = 'none';
+    changeTimeBtn.style.display = 'none';
+    
+    if (this.value === 'realtime') {
+      STATE.isLiveMode = true;
+      const now = new Date();
+      const from = new Date(now.getTime() - CONFIG.REALTIME_HISTORY_HOURS * 3600 * 1000);
+      fetchHistoryForRange(from.toISOString(), now.toISOString());
+    } else {
+      STATE.isLiveMode = false;
+      
+      const now = new Date();
+      let from, to = now;
+      
+      switch (this.value) {
+        case 'today':
+          from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+          break;
+        case 'yesterday':
+          from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0);
+          to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+          break;
+        case 'week':
+          from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay(), 0, 0, 0);
+          break;
+        case 'month':
+          from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+          break;
+        default:
+          from = new Date(now.getTime() - 24 * 3600 * 1000);
+      }
+      
+      fetchHistoryForRange(from.toISOString(), to.toISOString());
+    }
+  };
+
+  document.getElementById('change-time-btn').onclick = () => {
+    const customDiv = document.getElementById('custom-time');
+    customDiv.style.display = customDiv.style.display === 'none' ? 'block' : 'none';
+  };
+
+  document.getElementById('custom-apply').onclick = () => {
+    const fromVal = document.getElementById('custom-from').value;
+    const toVal = document.getElementById('custom-to').value;
+    
+    if (!fromVal || !toVal) {
+      alert('Please select both from and to dates');
+      return;
+    }
+
+    STATE.isLiveMode = false;
+    const from = new Date(fromVal);
+    const to = new Date(toVal);
+    
+    if (from >= to) {
+      alert('From date must be before To date');
+      return;
+    }
+
+    fetchHistoryForRange(from.toISOString(), to.toISOString());
+    document.getElementById('custom-time').style.display = 'none';
+  };
+}
+
+// Time selector
+document.getElementById('time-range').onchange = function() {
+  STATE.mode = this.value;
+  const customDiv = document.getElementById('custom-time');
+  const changeTimeBtn = document.getElementById('change-time-btn');
+  
+  clearSelection();
+  resetZoom();
+  
+  if (this.value === 'custom') {
+    customDiv.style.display = 'block';
+    changeTimeBtn.style.display = 'inline-block';
+    STATE.isLiveMode = false;
+    return;
+  }
+  
+  customDiv.style.display = 'none';
+  changeTimeBtn.style.display = 'none';
+  
+  if (this.value === 'realtime') {
+    STATE.isLiveMode = true;
+    const now = new Date();
+    const from = new Date(now.getTime() - CONFIG.REALTIME_HISTORY_HOURS * 3600 * 1000);
+    fetchHistoryForRange(from.toISOString(), now.toISOString());
+  } else {
+    STATE.isLiveMode = false;
+    
+    const now = new Date();
+    let from, to = now;
+    
+    switch (this.value) {
+      case 'today':
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        break;
+      case 'yesterday':
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 0, 0, 0);
+        to = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+        break;
+      case 'week':
+        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay(), 0, 0, 0);
+        break;
+      case 'month':
+        from = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        break;
+      default:
+        from = new Date(now.getTime() - 24 * 3600 * 1000);
+    }
+    
+    fetchHistoryForRange(from.toISOString(), to.toISOString());
+  }
+};
+
+document.getElementById('change-time-btn').onclick = () => {
+  const customDiv = document.getElementById('custom-time');
+  customDiv.style.display = customDiv.style.display === 'none' ? 'block' : 'none';
+};
+
+document.getElementById('custom-apply').onclick = () => {
+  const fromVal = document.getElementById('custom-from').value;
+  const toVal = document.getElementById('custom-to').value;
+  
+  if (!fromVal || !toVal) {
+    alert('Please select both from and to dates');
+    return;
+  }
+
+  STATE.isLiveMode = false;
+  const from = new Date(fromVal);
+  const to = new Date(toVal);
+  
+  if (from >= to) {
+    alert('From date must be before To date');
+    return;
+  }
+
+  fetchHistoryForRange(from.toISOString(), to.toISOString());
+  document.getElementById('custom-time').style.display = 'none';
+};
+
+// Timeline controls
+document.getElementById('reset-timeline-btn').onclick = () => {
+  resetTimeline();
+};
+
+// Timeline collapse
+document.getElementById('timeline-collapse-btn').onclick = () => {
+  isTimelineCollapsed = !isTimelineCollapsed;
+  const btn = document.getElementById('timeline-collapse-btn');
+  const wrapper = document.getElementById('timeline-wrapper');
+  
+  if (isTimelineCollapsed) {
+    btn.textContent = '▲';
+    wrapper.classList.add('collapsed');
+  } else {
+    btn.textContent = '▼';
+    wrapper.classList.remove('collapsed');
+  }
+  
+  drawTimeline();
+};
+
+// Legend collapse
+document.getElementById('legend-toggle-btn').onclick = () => {
+  isLegendCollapsed = !isLegendCollapsed;
+  const btn = document.getElementById('legend-toggle-btn');
+  const items = document.getElementById('legend-items');
+  
+  if (isLegendCollapsed) {
+    btn.textContent = '▶';
+    items.classList.add('collapsed');
+  } else {
+    btn.textContent = '▼';
+    items.classList.remove('collapsed');
+  }
+};
+
+// Settings
+document.getElementById('settings-btn').onclick = () => {
+  document.getElementById('settings-modal').style.display = 'flex';
+};
+
+document.getElementById('close-settings').onclick = () => {
+  document.getElementById('settings-modal').style.display = 'none';
+};
+
+document.getElementById('theme-select').onchange = function() {
+  applyTheme(this.value);
+};
+
+// Close settings when clicking outside
+document.getElementById('settings-modal').onclick = (e) => {
+  if (e.target.id === 'settings-modal') {
+    document.getElementById('settings-modal').style.display = 'none';
+  }
+};
+
+// Initialize
+async function init() {
+  try {
+    loadTheme();
+    
+    // Check if Leaflet loaded
+    if (typeof L === 'undefined') {
+      throw new Error('Leaflet library failed to load');
+    }
+    
+    initMap();
+    await fetchDevices();
+    setupDateInputs();
+    setupEventListeners();
+    
+    // Start in real-time mode
+    STATE.mode = 'realtime';
+    STATE.isLiveMode = true;
+    
+    const now = new Date();
+    const from = new Date(now.getTime() - CONFIG.REALTIME_HISTORY_HOURS * 3600 * 1000);
+    
+    await fetchHistoryForRange(from.toISOString(), now.toISOString());
+    
+    // Start live polling
+    liveInterval = setInterval(fetchLive, CONFIG.POLL_INTERVAL_MS);
+  } catch (err) {
+    console.error('Initialization error:', err);
+    showError(`Application failed to initialize: ${err.message}<br><br>Please refresh the page or check the console for details.`, false);
+  }
+}
+
+// Start application when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+
+</body>
+</html>
