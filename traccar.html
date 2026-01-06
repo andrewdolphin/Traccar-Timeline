@@ -1128,6 +1128,10 @@ body.dark-mode .palette-item input[type="text"] {
   box-shadow:  var(--modal-shadow);
 }
 
+.blurred img {
+  filter: blur(30px); /* adjust px for more/less blur */
+}
+
 </style>
 </head>
 <body>
@@ -1337,7 +1341,6 @@ const CONFIG = {
 // STATE MANAGEMENT
 // ============================================================================
 
-// Ground truth state - ALL application state now centralized here
 const STATE = {
   // Mode and time range
   mode: 'realtime',
@@ -1883,6 +1886,7 @@ function formatAddress(addressData) {
 async function reverseGeocode(lat, lon) {
   const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
   
+  console.log(key);
   if (CONFIG.GEOCODE_CACHE[key]) {
     return CONFIG.GEOCODE_CACHE[key];
   }
@@ -1913,6 +1917,32 @@ async function reverseGeocode(lat, lon) {
 // ============================================================================
 // MAP POPUP
 // ============================================================================
+
+
+function bindPopupWithGeocode(marker, deviceId, positionData) {
+  const popupContent = createPopupContent(deviceId, positionData);
+  const popup = marker.bindPopup(popupContent);
+  
+  popup.on('popupopen', () => {
+    const latlng = marker.getLatLng();
+    reverseGeocode(latlng.lat, latlng.lng).then(address => {
+      const addressDiv = document.getElementById(`address-${deviceId}`);
+      if (addressDiv) {
+        addressDiv.innerHTML = '';
+        if (address) {
+          addressDiv.innerHTML = '<i class="fa-solid fa-map-location-dot"></i> ' + address;
+        } else {
+          const em = document.createElement('em');
+          em.textContent = 'Address unavailable';
+          addressDiv.appendChild(document.createTextNode('<i class="fa-solid fa-map-location-dot"></i> '));
+          addressDiv.appendChild(em);
+        }
+      }
+    });
+  });
+  
+  return popup;
+}
 
 function centerMapWithPopup(latLng, zoomLevel = 15) {
   // Get timeline height
@@ -2157,8 +2187,8 @@ function updateLegend(highlightedDevices = null) {
               weight: 2
             }).addTo(map);
             
-            const popupContent = createPopupContent(id, closestPos);
-            tempMarker.bindPopup(popupContent);
+            
+            bindPopupWithGeocode(tempMarker, id, closestPos);
             tempMarker.openPopup();
             
             DATA.tempMarkers[id] = tempMarker;
@@ -2444,34 +2474,9 @@ async function fetchHistoryForRange(fromTime, toTime) {
           weight: 2
         }).addTo(map);
         
-        const popupContent = createPopupContent(id, last);
-        marker.bindPopup(popupContent);
+        bindPopupWithGeocode(marker, id, last);
+
         DATA.markers[id] = marker;
-        
-        reverseGeocode(lastCoords[0], lastCoords[1]).then(address => {
-          const addressDiv = document.getElementById(`address-${id}`);
-          if (addressDiv) {
-            addressDiv.innerHTML = '';
-            if (address) {
-              addressDiv.textContent = '📍 ' + address;
-            } else {
-              const em = document.createElement('em');
-              em.textContent = 'Address unavailable';
-              addressDiv.appendChild(document.createTextNode('📍 '));
-              addressDiv.appendChild(em);
-            }
-          }
-        }).catch(err => {
-          console.warn('Geocoding error:', err);
-          const addressDiv = document.getElementById(`address-${id}`);
-          if (addressDiv) {
-            addressDiv.innerHTML = '';
-            const em = document.createElement('em');
-            em.textContent = 'Address unavailable';
-            addressDiv.appendChild(document.createTextNode('📍 '));
-            addressDiv.appendChild(em);
-          }
-        });
         
         allLatLngs.push(...DATA.history[id].map(h => h.coords));
       } catch (err) {
@@ -2547,31 +2552,12 @@ async function fetchLive() {
           weight: 2
         }).addTo(map);
         
-        const popupContent = createPopupContent(id, positionData);
-        marker.bindPopup(popupContent);
+        bindPopupWithGeocode(marker, id, positionData);
         DATA.markers[id] = marker;
         
         // Initialize history for this device
         if (!DATA.history[id]) DATA.history[id] = [];
         DATA.history[id].push(positionData);
-        
-        // Geocode address
-        reverseGeocode(latlng[0], latlng[1]).then(address => {
-          const addressDiv = document.getElementById(`address-${id}`);
-          if (addressDiv) {
-            addressDiv.innerHTML = '';
-            if (address) {
-              addressDiv.textContent = '📍 ' + address;
-            } else {
-              const em = document.createElement('em');
-              em.textContent = 'Address unavailable';
-              addressDiv.appendChild(document.createTextNode('📍 '));
-              addressDiv.appendChild(em);
-            }
-          }
-        }).catch(() => {});
-        
-        continue;
       }
 
       if (DATA.markers[id] && !DATA.tempMarkers[id]) {
@@ -2579,21 +2565,6 @@ async function fetchLive() {
         
         const popupContent = createPopupContent(id, positionData);
         DATA.markers[id].setPopupContent(popupContent);
-        
-        reverseGeocode(latlng[0], latlng[1]).then(address => {
-          const addressDiv = document.getElementById(`address-${id}`);
-          if (addressDiv) {
-            addressDiv.innerHTML = '';
-            if (address) {
-              addressDiv.textContent = '📍 ' + address;
-            } else {
-              const em = document.createElement('em');
-              em.textContent = 'Address unavailable';
-              addressDiv.appendChild(document.createTextNode('📍 '));
-              addressDiv.appendChild(em);
-            }
-          }
-        }).catch(() => {});
         
         if (!DATA.history[id]) DATA.history[id] = [];
         DATA.history[id].push(positionData);
@@ -3306,8 +3277,7 @@ function updateTimelineMarkers(time, locked = false) {
       weight: 2
     }).addTo(map);
     
-    const popupContent = createPopupContent(id, closestPos);
-    tempMarker.bindPopup(popupContent);
+    bindPopupWithGeocode(tempMarker, id, closestPos);
     
     if (locked) {
       tempMarker.openPopup();
@@ -3463,8 +3433,7 @@ function selectTimeOnTimeline(deviceId, timestamp) {
     weight: 2
   }).addTo(map);
   
-  const popupContent = createPopupContent(deviceId, closestPos);
-  tempMarker.bindPopup(popupContent);
+  bindPopupWithGeocode(tempMarker, deviceId, closestPos); 
   tempMarker.openPopup();
   
   DATA.tempMarkers[deviceId] = tempMarker;
