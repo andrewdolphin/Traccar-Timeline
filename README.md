@@ -122,3 +122,4 @@ server {
 - Leaflet.js - BSD-2-Clause License
 - OpenStreetMap - ODbL
 - Traccar - Apache 2.0
+- Font Awesome 6 Free - CC BY 4.0
