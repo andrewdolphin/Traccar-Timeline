@@ -1128,10 +1128,6 @@ body.dark-mode .palette-item input[type="text"] {
   box-shadow:  var(--modal-shadow);
 }
 
-.blurred img {
-  filter: blur(30px); /* adjust px for more/less blur */
-}
-
 </style>
 </head>
 <body>
@@ -1886,7 +1882,6 @@ function formatAddress(addressData) {
 async function reverseGeocode(lat, lon) {
   const key = `${lat.toFixed(4)},${lon.toFixed(4)}`;
   
-  console.log(key);
   if (CONFIG.GEOCODE_CACHE[key]) {
     return CONFIG.GEOCODE_CACHE[key];
   }
@@ -2777,13 +2772,16 @@ function setupTimelineInteraction(timelineDevices, durationMs) {
       if (selectionDuration > minSelectionMs) {
         // Valid selection - zoom in by creating a custom time range
         
+        // Only overwrite previousTimeRange if not already set
+        if (!STATE.previousTimeRange) {
         // Save current state for reverting
-        STATE.previousTimeRange = {
-          mode: STATE.mode,
-          startTime: new Date(STATE.startTime),
-          endTime: new Date(STATE.endTime),
-          isLiveMode: STATE.isLiveMode
-        };
+          STATE.previousTimeRange = {
+            mode: STATE.mode,
+            startTime: new Date(STATE.startTime),
+            endTime: new Date(STATE.endTime),
+            isLiveMode: STATE.isLiveMode
+          };
+        }
         
         // Clear live interval if active
         if (STATE.liveInterval) {
@@ -4019,9 +4017,6 @@ async function init() {
         location.reload();
       };
     }
-
-
-
   }
 }
 
