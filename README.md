@@ -6,7 +6,7 @@ Simple html single page web app for viewing Traccar API GPS data. Uses timeline-
 Just want to see it in action: **[Traccar-Timeline](https://iamdabe.github.io/Traccar-Timeline/traccar.html)** on github pages.
 
 ## Contents
-- `traccar.html` - single page html/css/jscript Traccar timeline app.
+- `traccar.html` - single page HTML/JS Traccar API timeline app.
 
 ## Features
 * Real-time GPS tracking using Traccar API with live map updates
@@ -18,53 +18,53 @@ Just want to see it in action: **[Traccar-Timeline](https://iamdabe.github.io/Tr
 * Movement-only tracks (configurable threshold)
 
 ## Preview
-A gallery of screenshots from the Traccar Timeline app
+Screenshots from both mobile and desktop experierences.
 
-### Desktop
+#### Desktop
 
 <div style="display:flex; flex-wrap:wrap; gap:15px;">
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark-monthview.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark-monthview.png" alt="Desktop Dark Month View" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark-monthview.png" alt="Desktop Dark Month View" width="300">
 </a>
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark-settings.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark-settings.png" alt="Desktop Dark Settings" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark-settings.png" alt="Desktop Dark Settings" width="300">
 </a>
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark.png" alt="Desktop Dark" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-dark.png" alt="Desktop Dark" width="300">
 </a>
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-light.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-light.png" alt="Desktop Light" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/desktop-light.png" alt="Desktop Light" width="300">
 </a>
 
 </div>
 
 
-### Mobile
+#### Mobile
 
 <div style="display:flex; flex-wrap:wrap; gap:15px;">
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-dark-minimal.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-dark-minimal.png" alt="Mobile Dark Minimal" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-dark-minimal.png" alt="Mobile Dark Minimal" width="200">
 </a>
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-dark-popup.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-dark-popup.png" alt="Mobile Dark Popup" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-dark-popup.png" alt="Mobile Dark Popup" width="200">
 </a>
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light-collapsed.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light-collapsed.png" alt="Mobile Light Collapsed" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light-collapsed.png" alt="Mobile Light Collapsed" width="200">
 </a>
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light-popup-geocode.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light-popup-geocode.png" alt="Mobile Light Popup Geocode" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light-popup-geocode.png" alt="Mobile Light Popup Geocode" width="200">
 </a>
 
 <a href="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light.png">
-  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light.png" alt="Mobile Light" width="250">
+  <img src="https://raw.githubusercontent.com/iamdabe/Traccar-Timeline/main/screenshots/mobile-light.png" alt="Mobile Light" width="200">
 </a>
 
 </div>
@@ -74,6 +74,18 @@ Download the `traccar.html`  file to your pc and load it in chrome! - That's it!
 
 **Note:** On first run a popup will show complaining about the Traccar API url. Head into settings and enter the URL to your traccar API. Ensure you complete with the trailing slash.
 
+#### CORS and traccar.xml
+If you don't proxy your Traccar API (see Nginx proxy.conf below) you'll need to ensure your server CORS is configued correctly by editing your traccar.xml, example below: 
+```
+<properties>
+    ~~~ other config vars ~~~
+    <entry key='web.cors'>*</entry>
+    <entry key='web.cors.credentials'>true</entry>
+    <entry key='web.origin'>*</entry>
+</properties>
+```
+
+#### Nginx proxy
 If you don't wish to expose your user/pass for your traccar server you can also use a nginx proxy by using a location conf. See example below. 
 ```
 server {
