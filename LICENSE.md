@@ -1,6 +1,6 @@
 # Creative Commons Attribution-NonCommercial 4.0 International
 
-Copyright (c) 2025 [Your Name]
+Copyright (c) 2026 David Walker
 
 This work is licensed under the Creative Commons Attribution-NonCommercial 4.0 International License.
 
@@ -20,7 +20,7 @@ Under the following terms:
 - Use in production commercial applications without permission
 
 ### Commercial Licensing
-For commercial use, please contact [your email/website]
+For commercial use, please contact http://just.dabe.co.uk
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
 
