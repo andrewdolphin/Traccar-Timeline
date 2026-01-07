@@ -2847,13 +2847,16 @@ function setupTimelineInteraction(timelineDevices, durationMs) {
         if (selectionDuration > minSelectionMs) {
           // Valid selection - zoom in by creating a custom time range
           
-          // Save current state for reverting
-          STATE.previousTimeRange = {
-            mode: STATE.mode,
-            startTime: new Date(STATE.startTime),
-            endTime: new Date(STATE.endTime),
-            isLiveMode: STATE.isLiveMode
-          };
+          // Only overwrite previousTimeRange if not already set
+          if (!STATE.previousTimeRange) {          
+            // Save current state for reverting
+            STATE.previousTimeRange = {
+              mode: STATE.mode,
+              startTime: new Date(STATE.startTime),
+              endTime: new Date(STATE.endTime),
+              isLiveMode: STATE.isLiveMode
+            };
+          }
           
           // Clear live interval if active
           if (STATE.liveInterval) {
@@ -4034,4 +4037,3 @@ if (document.readyState === 'loading') {
 
 </body>
 </html>
-
