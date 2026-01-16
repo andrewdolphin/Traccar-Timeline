@@ -1565,6 +1565,47 @@ function closeColorEditor() {
   STATE.editingColorIndex = null;
 }
 
+function updateMapColors() {
+  // Update all markers on the map with new colors
+  Object.keys(DATA.markers).forEach(deviceId => {
+    const marker = DATA.markers[deviceId];
+    const color = DATA.deviceColors[deviceId];
+    if (marker && color) {
+      marker.setStyle({
+        color: color,
+        fillColor: color
+      });
+    }
+  });
+
+  // Update all temp markers on the map with new colors
+  Object.keys(DATA.tempMarkers).forEach(deviceId => {
+    const marker = DATA.tempMarkers[deviceId];
+    const color = DATA.deviceColors[deviceId];
+    if (marker && color) {
+      marker.setStyle({
+        color: color,
+        fillColor: color
+      });
+    }
+  });
+
+  // Update all polylines on the map with new colors
+  Object.keys(DATA.polylines).forEach(deviceId => {
+    const segments = DATA.polylines[deviceId];
+    const color = DATA.deviceColors[deviceId];
+    if (segments && color) {
+      segments.forEach(segment => {
+        if (segment) {
+          segment.setStyle({
+            color: color
+          });
+        }
+      });
+    }
+  });
+}
+
 function saveColorEdit() {
   const input = document.getElementById('color-hex-input');
   if (!input || STATE.editingColorIndex === null) return;
@@ -1577,17 +1618,21 @@ function saveColorEdit() {
     return;
   }
   
+  const oldColor = CONFIG.PALETTE[STATE.editingColorIndex];
   CONFIG.PALETTE[STATE.editingColorIndex] = hexValue.toUpperCase();
   saveSettings();
   renderPaletteManager();
-  
-  // Reapply colors to devices
-  Object.keys(DATA.deviceColors).forEach((deviceId, index) => {
-    DATA.deviceColors[deviceId] = CONFIG.PALETTE[index % CONFIG.PALETTE.length];
+
+  // Update devices that were using the old color to use the new color
+  Object.keys(DATA.deviceColors).forEach((deviceId) => {
+    if (DATA.deviceColors[deviceId] === oldColor) {
+      DATA.deviceColors[deviceId] = hexValue.toUpperCase();
+    }
   });
+  updateMapColors();
   drawTimeline();
   updateLegend();
-  
+
   closeColorEditor();
 }
 
@@ -1599,17 +1644,21 @@ function deleteColorEdit() {
     return;
   }
   
+  const deletedColor = CONFIG.PALETTE[STATE.editingColorIndex];
   CONFIG.PALETTE.splice(STATE.editingColorIndex, 1);
   saveSettings();
   renderPaletteManager();
-  
-  // Reapply colors to devices
-  Object.keys(DATA.deviceColors).forEach((deviceId, index) => {
-    DATA.deviceColors[deviceId] = CONFIG.PALETTE[index % CONFIG.PALETTE.length];
+
+  // Reassign devices using the deleted color to the first palette color
+  Object.keys(DATA.deviceColors).forEach((deviceId) => {
+    if (DATA.deviceColors[deviceId] === deletedColor) {
+      DATA.deviceColors[deviceId] = CONFIG.PALETTE[0];
+    }
   });
+  updateMapColors();
   drawTimeline();
   updateLegend();
-  
+
   closeColorEditor();
 }
 
