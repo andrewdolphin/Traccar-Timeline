@@ -6,7 +6,7 @@ Simple html single page web app for viewing Traccar API GPS data. Uses timeline-
 Just want to see it in action: **[Traccar-Timeline](https://iamdabe.github.io/Traccar-Timeline/traccar.html)** on github pages.
 
 ## Contents
-- `traccar.html` - single page HTML/JS Traccar API timeline app.
+- `src/traccar.html` - single page HTML/JS Traccar API timeline app.
 
 ## Features
 * Real-time GPS tracking using Traccar API with live map updates
