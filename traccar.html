@@ -7,9 +7,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 <style>
-/* ============================================================================
-   CSS VARIABLES - Single source of truth for theming
-   ============================================================================ */
+
 :root {
   /* Base Theme Colors */
   --bg-primary: rgba(255, 255, 255, 0.95);
@@ -2546,10 +2544,15 @@ async function fetchLive() {
           fillColor: DATA.deviceColors[id],
           fillOpacity: 0.9,
           weight: 2
-        }).addTo(map);
-        
+        });
+
         bindPopupWithGeocode(marker, id, positionData);
         DATA.markers[id] = marker;
+
+        // Only add to map if device is visible
+        if (DATA.deviceVisibility[id] && !map.hasLayer(marker)) {
+          marker.addTo(map);
+        }
         
         // Initialize history for this device
         if (!DATA.history[id]) DATA.history[id] = [];
@@ -2572,26 +2575,30 @@ async function fetchLive() {
             [prev.coords, latlng],
             { color: DATA.deviceColors[id], opacity, weight: 3 }
           );
-          segment.addTo(map);
-          
+
           // Add hover effect to highlight timeline
           segment.on('mouseover', function() {
             this.setStyle({ weight: 5, opacity: 1 });
             highlightTimelineForTime(id, positionData.timestamp);
           });
-          
+
           segment.on('mouseout', function() {
             this.setStyle({ weight: 3, opacity: 0.8 });
             clearTimelineHighlight();
           });
-          
+
           // Add click handler to select time on timeline
           segment.on('click', function() {
             selectTimeOnTimeline(id, positionData.timestamp);
           });
-          
+
           if (!DATA.polylines[id]) DATA.polylines[id] = [];
           DATA.polylines[id].push(segment);
+
+          // Only add to map if device is visible
+          if (DATA.deviceVisibility[id] && !map.hasLayer(segment)) {
+            segment.addTo(map);
+          }
           
           const distance = calculateDistance(
             prev.coords[0], prev.coords[1],
