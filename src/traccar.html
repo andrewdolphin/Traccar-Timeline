@@ -1402,7 +1402,10 @@ const STATE = {
   
   // Intervals
   liveInterval: null,
-  legendUpdateInterval: null
+  legendUpdateInterval: null,
+
+  // Gap detection
+  lastFetchTime: null
 };
 
 // Data stores
@@ -2616,16 +2619,145 @@ async function fetchHistoryForRange(fromTime, toTime) {
   }
 }
 
+async function fetchMissingPositions(fromTime, toTime) {
+  console.log('[Backfill] Detected gap in position updates, fetching missing positions...');
+
+  try {
+    let totalBackfilled = 0;
+
+    // Fetch missing positions for each device
+    await Promise.all(Object.keys(DATA.deviceNames).map(async (id) => {
+      try {
+        const url = `${CONFIG.API_URL}positions?deviceId=${id}&from=${fromTime.toISOString()}&to=${toTime.toISOString()}`;
+        const res = await authenticatedFetch(url);
+
+        if (!res.ok) {
+          console.warn(`[Backfill] Failed to fetch positions for device ${id}: HTTP ${res.status}`);
+          return;
+        }
+
+        const positions = await res.json();
+        if (!positions || !positions.length) {
+          return;
+        }
+
+        // Convert to our position format
+        const newPositions = positions.map(p => ({
+          coords: [p.latitude, p.longitude],
+          timestamp: new Date(p.serverTime || p.fixTime),
+          speed: p.speed,
+          course: p.course,
+          accuracy: p.accuracy,
+          attributes: p.attributes || {}
+        }));
+
+        // Get existing history
+        const existingHistory = DATA.history[id] || [];
+
+        // Merge and deduplicate based on timestamp
+        const allPositions = [...existingHistory, ...newPositions];
+
+        // Create a map to deduplicate by timestamp (keeping first occurrence)
+        const uniqueMap = new Map();
+        allPositions.forEach(pos => {
+          const timeKey = pos.timestamp.getTime();
+          if (!uniqueMap.has(timeKey)) {
+            uniqueMap.set(timeKey, pos);
+          }
+        });
+
+        // Convert back to array and sort by timestamp
+        DATA.history[id] = Array.from(uniqueMap.values()).sort((a, b) => a.timestamp - b.timestamp);
+
+        const backfilledCount = newPositions.length;
+        totalBackfilled += backfilledCount;
+
+        // Redraw polylines for this device
+        if (DATA.polylines[id]) {
+          DATA.polylines[id].forEach(safeRemove);
+          DATA.polylines[id] = [];
+        }
+
+        DATA.history[id].forEach((h, i) => {
+          if (i === 0) return;
+          const opacity = 0.3 + 0.7 * (i / DATA.history[id].length);
+          const segment = L.polyline(
+            [DATA.history[id][i - 1].coords, h.coords],
+            { color: DATA.deviceColors[id], opacity, weight: 3 }
+          );
+
+          // Add hover effect to highlight timeline
+          segment.on('mouseover', function() {
+            this.setStyle({ weight: 5, opacity: 1 });
+            highlightTimelineForTime(id, h.timestamp);
+          });
+
+          segment.on('mouseout', function() {
+            this.setStyle({ weight: 3, opacity });
+            clearTimelineHighlight();
+          });
+
+          // Add click handler to select time on timeline
+          segment.on('click', function() {
+            selectTimeOnTimeline(id, h.timestamp);
+          });
+
+          if (!DATA.polylines[id]) DATA.polylines[id] = [];
+          DATA.polylines[id].push(segment);
+
+          // Only add to map if device is visible
+          if (DATA.deviceVisibility[id] && !map.hasLayer(segment)) {
+            segment.addTo(map);
+          }
+        });
+
+        // Update movement segments
+        DATA.movementSegments[id] = detectMovementSegments(id);
+
+      } catch (err) {
+        console.error(`[Backfill] Error fetching positions for device ${id}:`, err);
+      }
+    }));
+
+    console.log(`[Backfill] Backfilled ${totalBackfilled} position(s) across all devices`);
+
+    // Redraw timeline to show new positions
+    if (STATE.mode === 'realtime') {
+      drawTimeline();
+    }
+
+  } catch (err) {
+    console.error('[Backfill] Error during backfill:', err);
+  }
+}
+
 async function fetchLive() {
   if (!STATE.isLiveMode) return;
-  
+
+  // Gap detection: Check if we've been away for too long
+  const now = new Date();
+  const threshold = CONFIG.POLL_INTERVAL_MS * 2.5;
+
+  if (STATE.lastFetchTime) {
+    const timeSinceLastFetch = now - STATE.lastFetchTime;
+
+    if (timeSinceLastFetch > threshold) {
+      console.log(`[Gap Detection] Time since last fetch: ${Math.round(timeSinceLastFetch / 1000)}s (threshold: ${Math.round(threshold / 1000)}s)`);
+      // Backfill missing positions from when we were away
+      await fetchMissingPositions(STATE.lastFetchTime, now);
+    }
+  }
+
+  // Update last fetch time
+  STATE.lastFetchTime = now;
+
   try {
     const res = await authenticatedFetch(CONFIG.API_URL + 'positions');
     if (!res.ok) {
       console.warn(`Live position fetch failed: HTTP ${res.status}`);
       return;
     }
-    
+
     const positions = await res.json();
     
     for (const device of positions) {
@@ -3954,7 +4086,10 @@ function setupEventListeners() {
         const now = new Date();
         const from = new Date(now.getTime() - CONFIG.REALTIME_HISTORY_HOURS * CONFIG.MS_PER_HOUR);
         fetchHistoryForRange(from.toISOString(), now.toISOString());
-        
+
+        // Initialize last fetch time for gap detection
+        STATE.lastFetchTime = new Date();
+
         STATE.liveInterval = setInterval(fetchLive, CONFIG.POLL_INTERVAL_MS);
       } else {
         STATE.isLiveMode = false;
@@ -4113,7 +4248,10 @@ async function init() {
     const from = new Date(now.getTime() - CONFIG.REALTIME_HISTORY_HOURS * CONFIG.MS_PER_HOUR);
     
     await fetchHistoryForRange(from.toISOString(), now.toISOString());
-    
+
+    // Initialize last fetch time for gap detection
+    STATE.lastFetchTime = new Date();
+
     STATE.liveInterval = setInterval(fetchLive, CONFIG.POLL_INTERVAL_MS);
     
     STATE.legendUpdateInterval = setInterval(() => {
