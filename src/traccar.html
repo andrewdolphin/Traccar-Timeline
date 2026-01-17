@@ -842,7 +842,7 @@ body.dark-mode .timeline-row-bg {
   .settings-columns {
     grid-template-columns: 1fr;
   }
-  
+
   #settings-content {
     min-width: unset;
     width: 100vw;
@@ -852,24 +852,35 @@ body.dark-mode .timeline-row-bg {
     margin: 0;
     padding: var(--spacing-lg);
   }
-  
+
   #settings-modal {
     padding: 0;
     align-items: stretch;
   }
-  
+
   #color-editor-content {
     width: 90vw;
     max-width: 400px;
   }
-  
+
   .palette-manager {
     grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
   }
-  
+
   .palette-color-swatch {
     width: 40px;
     height: 40px;
+  }
+
+  /* Mobile: Two-column grid for compact settings */
+  .settings-row-compact {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .settings-row-compact .settings-group {
+    margin-bottom: 0;
   }
 }
 
@@ -1199,14 +1210,16 @@ body.dark-mode .palette-item input[type="text"] {
             </div>
           </div>
 
-          <div class="settings-group">
-            <label>Poll Interval (ms):</label>
-            <input type="number" id="poll-interval" value="5000" min="1000" step="1000">
-          </div>
+          <div class="settings-row-compact">
+            <div class="settings-group">
+              <label>Poll Interval (ms):</label>
+              <input type="number" id="poll-interval" value="5000" min="1000" step="1000">
+            </div>
 
-          <div class="settings-group">
-            <label>Movement Threshold (meters):</label>
-            <input type="number" id="movement-threshold" value="20" min="1" step="1">
+            <div class="settings-group">
+              <label>Movement Threshold (m):</label>
+              <input type="number" id="movement-threshold" value="20" min="1" step="1">
+            </div>
           </div>
 
           <div class="settings-group">
@@ -1226,19 +1239,21 @@ body.dark-mode .palette-item input[type="text"] {
             </select>
           </div>
 
-          <div class="settings-group">
-            <label>Foreground Accent Color:</label>
-            <div class="color-picker-wrapper">
-              <input type="color" id="foreground-color" value="#4ECDC4">
-              <input type="text" id="foreground-color-text" value="#4ECDC4">
+          <div class="settings-row-compact">
+            <div class="settings-group">
+              <label>Foreground Color:</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="foreground-color" value="#4ECDC4">
+                <input type="text" id="foreground-color-text" value="#4ECDC4">
+              </div>
             </div>
-          </div>
 
-          <div class="settings-group">
-            <label>Background Accent Color:</label>
-            <div class="color-picker-wrapper">
-              <input type="color" id="background-color" value="#2A9D8F">
-              <input type="text" id="background-color-text" value="#2A9D8F">
+            <div class="settings-group">
+              <label>Background Color:</label>
+              <div class="color-picker-wrapper">
+                <input type="color" id="background-color" value="#2A9D8F">
+                <input type="text" id="background-color-text" value="#2A9D8F">
+              </div>
             </div>
           </div>
 
