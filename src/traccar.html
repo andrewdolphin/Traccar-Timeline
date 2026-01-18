@@ -1258,6 +1258,13 @@ body.dark-mode .palette-item input[type="text"] {
           </div>
 
           <div class="settings-group">
+            <label>
+              <input type="checkbox" id="show-direction-arrows" checked>
+              Show direction arrows on trails
+            </label>
+          </div>
+
+          <div class="settings-group">
             <label>Device Color Palette:</label>
             <div id="palette-manager" class="palette-manager"></div>
             <button id="add-palette-color" class="secondary" style="margin-top: 8px;"><i class="fa-solid fa-palette"></i> Add Color</button>
@@ -1326,6 +1333,7 @@ body.dark-mode .palette-item input[type="text"] {
   </section>
 </main>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
 <script>
 // ============================================================================
 // CONFIGURATION & CONSTANTS
@@ -1351,6 +1359,8 @@ const CONFIG = {
   ],
   REALTIME_HISTORY_HOURS: 3,
   DRAG_THRESHOLD_PX: 5, // Minimum pixels to move before considering it a drag (vs tap/click)
+  SHOW_DIRECTION_ARROWS: true, // Show arrows on polylines to indicate direction of travel
+  ARROW_REPEAT_PIXELS: 100, // Pixels between direction arrows on trails
   GEOCODE_CACHE: {},
   // Time constants
   MS_PER_SECOND: 1000,
@@ -1418,7 +1428,8 @@ const DATA = {
   polylines: {},
   tempMarkers: {},
   movementSegments: {},
-  deviceVisibility: {}
+  deviceVisibility: {},
+  trailDecorators: {}  // One arrow decorator per device trail
 };
 
 // Map instance
@@ -1480,6 +1491,7 @@ function loadSettings() {
       if (settings.pollInterval) CONFIG.POLL_INTERVAL_MS = settings.pollInterval;
       if (settings.movementThreshold) CONFIG.MOVEMENT_THRESHOLD_M = settings.movementThreshold;
       if (settings.realtimeHours) CONFIG.REALTIME_HISTORY_HOURS = settings.realtimeHours;
+      if (settings.showDirectionArrows !== undefined) CONFIG.SHOW_DIRECTION_ARROWS = settings.showDirectionArrows;
       if (settings.palette && Array.isArray(settings.palette)) CONFIG.PALETTE = settings.palette;
       if (settings.foregroundColor) CONFIG.FOREGROUND_COLOR = settings.foregroundColor;
       if (settings.backgroundColor) CONFIG.BACKGROUND_COLOR = settings.backgroundColor;
@@ -1505,11 +1517,12 @@ function saveSettings() {
     pollInterval: CONFIG.POLL_INTERVAL_MS,
     movementThreshold: CONFIG.MOVEMENT_THRESHOLD_M,
     realtimeHours: CONFIG.REALTIME_HISTORY_HOURS,
+    showDirectionArrows: CONFIG.SHOW_DIRECTION_ARROWS,
     palette: CONFIG.PALETTE,
     foregroundColor: CONFIG.FOREGROUND_COLOR,
     backgroundColor: CONFIG.BACKGROUND_COLOR
   };
-  
+
   localStorage.setItem('traccarSettings', JSON.stringify(settings));
   applyAccentColors();
 }
@@ -1521,22 +1534,24 @@ function updateSettingsUI() {
   const pollIntervalInput = document.getElementById('poll-interval');
   const movementThresholdInput = document.getElementById('movement-threshold');
   const realtimeHoursInput = document.getElementById('realtime-hours');
+  const showDirectionArrowsInput = document.getElementById('show-direction-arrows');
   const foregroundColorInput = document.getElementById('foreground-color');
   const foregroundColorTextInput = document.getElementById('foreground-color-text');
   const backgroundColorInput = document.getElementById('background-color');
   const backgroundColorTextInput = document.getElementById('background-color-text');
-  
+
   if (apiUrlInput) apiUrlInput.value = CONFIG.API_URL;
   if (apiUsernameInput) apiUsernameInput.value = CONFIG.API_USERNAME || '';
   if (apiPasswordInput) apiPasswordInput.value = CONFIG.API_PASSWORD || '';
   if (pollIntervalInput) pollIntervalInput.value = CONFIG.POLL_INTERVAL_MS;
   if (movementThresholdInput) movementThresholdInput.value = CONFIG.MOVEMENT_THRESHOLD_M;
   if (realtimeHoursInput) realtimeHoursInput.value = CONFIG.REALTIME_HISTORY_HOURS;
+  if (showDirectionArrowsInput) showDirectionArrowsInput.checked = CONFIG.SHOW_DIRECTION_ARROWS;
   if (foregroundColorInput) foregroundColorInput.value = CONFIG.FOREGROUND_COLOR || '#4ECDC4';
   if (foregroundColorTextInput) foregroundColorTextInput.value = CONFIG.FOREGROUND_COLOR || '#4ECDC4';
   if (backgroundColorInput) backgroundColorInput.value = CONFIG.BACKGROUND_COLOR || '#2A9D8F';
   if (backgroundColorTextInput) backgroundColorTextInput.value = CONFIG.BACKGROUND_COLOR || '#2A9D8F';
-  
+
   renderPaletteManager();
 }
 
@@ -1744,6 +1759,7 @@ function importSettings(file) {
       if (settings.pollInterval) CONFIG.POLL_INTERVAL_MS = settings.pollInterval;
       if (settings.movementThreshold) CONFIG.MOVEMENT_THRESHOLD_M = settings.movementThreshold;
       if (settings.realtimeHours) CONFIG.REALTIME_HISTORY_HOURS = settings.realtimeHours;
+      if (settings.showDirectionArrows !== undefined) CONFIG.SHOW_DIRECTION_ARROWS = settings.showDirectionArrows;
       if (settings.palette && Array.isArray(settings.palette)) CONFIG.PALETTE = settings.palette;
       if (settings.foregroundColor) CONFIG.FOREGROUND_COLOR = settings.foregroundColor;
       if (settings.backgroundColor) CONFIG.BACKGROUND_COLOR = settings.backgroundColor;
@@ -1790,14 +1806,17 @@ function clearMap() {
   Object.values(DATA.markers).forEach(safeRemove);
   Object.values(DATA.tempMarkers).forEach(safeRemove);
   Object.values(DATA.polylines).forEach(segments => {
-    if (segments) segments.forEach(safeRemove);
+    if (segments) segments.forEach(removePolylineFromMap);
   });
+  // Remove all trail decorators
+  Object.keys(DATA.trailDecorators).forEach(removeTrailDecorator);
 
   DATA.markers = {};
   DATA.tempMarkers = {};
   DATA.polylines = {};
   DATA.history = {};
   DATA.movementSegments = {};
+  DATA.trailDecorators = {};
 }
 
 // ============================================================================
@@ -2304,13 +2323,13 @@ function updateLegend(highlightedDevices = null) {
 function setDeviceVisibility(deviceId, visible) {
   // Only do work if state is changing
   if (DATA.deviceVisibility[deviceId] === visible) return;
-  
+
   DATA.deviceVisibility[deviceId] = visible;
-  
+
   const marker = DATA.markers[deviceId];
   const tempMarker = DATA.tempMarkers[deviceId];
   const polylineSegments = DATA.polylines[deviceId];
-  
+
   if (visible) {
     // Show
     if (marker && !map.hasLayer(marker)) {
@@ -2319,13 +2338,8 @@ function setDeviceVisibility(deviceId, visible) {
     if (tempMarker && !map.hasLayer(tempMarker)) {
       tempMarker.addTo(map);
     }
-    if (polylineSegments) {
-      polylineSegments.forEach(seg => {
-        if (seg && !map.hasLayer(seg)) {
-          seg.addTo(map);
-        }
-      });
-    }
+    // Use helper to show polylines and trail decorator
+    setPolylineVisibility(polylineSegments, deviceId, true);
   } else {
     // Hide
     if (marker) {
@@ -2334,11 +2348,10 @@ function setDeviceVisibility(deviceId, visible) {
     if (tempMarker) {
       safeRemove(tempMarker);
     }
-    if (polylineSegments) {
-      polylineSegments.forEach(safeRemove);
-    }
+    // Use helper to hide polylines and trail decorator
+    setPolylineVisibility(polylineSegments, deviceId, false);
   }
-  
+
 }
 
 function toggleDeviceVisibility(deviceId) {
@@ -2367,6 +2380,112 @@ function updateTimelineAppearance() {
       tracksContainer.classList.add('disabled');
     }
   });
+}
+
+// ============================================================================
+// POLYLINE ARROW DECORATORS
+// ============================================================================
+
+// Create a single trail decorator for an entire device trail
+function createTrailDecorator(deviceId, color) {
+  if (!CONFIG.SHOW_DIRECTION_ARROWS) return null;
+  if (!DATA.history[deviceId] || DATA.history[deviceId].length < 2) return null;
+
+  try {
+    // Build coordinates array from history
+    const coords = DATA.history[deviceId].map(h => h.coords);
+
+    const decorator = L.polylineDecorator(L.polyline(coords), {
+      patterns: [
+        {
+          offset: '50%',
+          repeat: CONFIG.ARROW_REPEAT_PIXELS,
+          endOffset: 20,
+          symbol: L.Symbol.arrowHead({
+            pixelSize: 10,
+            polygon: false,
+            pathOptions: {
+              stroke: true,
+              color: color,
+              weight: 2,
+              fillOpacity: 1,
+              fill: true
+            }
+          })
+        }
+      ]
+    });
+
+    return decorator;
+  } catch (err) {
+    console.error('Error creating trail decorator:', err);
+    return null;
+  }
+}
+
+// Remove and recreate the trail decorator for a device
+function updateTrailDecorator(deviceId) {
+  // Remove existing decorator
+  if (DATA.trailDecorators[deviceId]) {
+    map.removeLayer(DATA.trailDecorators[deviceId]);
+    DATA.trailDecorators[deviceId] = null;
+  }
+
+  // Create new decorator if arrows enabled and device visible
+  if (CONFIG.SHOW_DIRECTION_ARROWS && DATA.deviceVisibility[deviceId]) {
+    const decorator = createTrailDecorator(deviceId, DATA.deviceColors[deviceId]);
+    if (decorator) {
+      decorator.addTo(map);
+      DATA.trailDecorators[deviceId] = decorator;
+    }
+  }
+}
+
+// Remove trail decorator for a device
+function removeTrailDecorator(deviceId) {
+  if (DATA.trailDecorators[deviceId]) {
+    map.removeLayer(DATA.trailDecorators[deviceId]);
+    DATA.trailDecorators[deviceId] = null;
+  }
+}
+
+// Helper function to remove a polyline from the map (no longer handles decorators)
+function removePolylineFromMap(segment) {
+  if (!segment) return;
+  safeRemove(segment);
+}
+
+// Helper function to add a polyline to the map (if visible) - no decorator
+function addPolylineToMap(segment, deviceId) {
+  if (!segment) return;
+
+  if (DATA.deviceVisibility[deviceId] && !map.hasLayer(segment)) {
+    segment.addTo(map);
+  }
+}
+
+// Helper function to show/hide polyline segments (decorators handled separately)
+function setPolylineVisibility(segments, deviceId, visible) {
+  if (!segments) return;
+
+  segments.forEach(segment => {
+    if (!segment) return;
+
+    if (visible) {
+      if (!map.hasLayer(segment)) {
+        segment.addTo(map);
+      }
+    } else {
+      safeRemove(segment);
+    }
+  });
+
+  // Handle trail decorator visibility
+  if (visible) {
+    updateTrailDecorator(deviceId);
+  } else {
+    removeTrailDecorator(deviceId);
+  }
 }
 
 // ============================================================================
@@ -2552,11 +2671,12 @@ async function fetchHistoryForRange(fromTime, toTime) {
           if (!DATA.polylines[id]) DATA.polylines[id] = [];
           DATA.polylines[id].push(segment);
 
-          // Only add to map if device is visible
-          if (DATA.deviceVisibility[id] && !map.hasLayer(segment)) {
-            segment.addTo(map);
-          }
+          // Add segment to map (decorator created after all segments)
+          addPolylineToMap(segment, id);
         });
+
+        // Create single trail decorator for this device
+        updateTrailDecorator(id);
 
         const last = DATA.history[id][DATA.history[id].length - 1];
         const lastCoords = last.coords;
@@ -2674,9 +2794,11 @@ async function fetchMissingPositions(fromTime, toTime) {
 
         // Redraw polylines for this device
         if (DATA.polylines[id]) {
-          DATA.polylines[id].forEach(safeRemove);
+          DATA.polylines[id].forEach(removePolylineFromMap);
           DATA.polylines[id] = [];
         }
+        // Remove trail decorator (will be recreated after new polylines)
+        removeTrailDecorator(id);
 
         DATA.history[id].forEach((h, i) => {
           if (i === 0) return;
@@ -2705,11 +2827,12 @@ async function fetchMissingPositions(fromTime, toTime) {
           if (!DATA.polylines[id]) DATA.polylines[id] = [];
           DATA.polylines[id].push(segment);
 
-          // Only add to map if device is visible
-          if (DATA.deviceVisibility[id] && !map.hasLayer(segment)) {
-            segment.addTo(map);
-          }
+          // Add segment to map (decorator created after all segments)
+          addPolylineToMap(segment, id);
         });
+
+        // Create single trail decorator for this device
+        updateTrailDecorator(id);
 
         // Update movement segments
         DATA.movementSegments[id] = detectMovementSegments(id);
@@ -2832,11 +2955,10 @@ async function fetchLive() {
           if (!DATA.polylines[id]) DATA.polylines[id] = [];
           DATA.polylines[id].push(segment);
 
-          // Only add to map if device is visible
-          if (DATA.deviceVisibility[id] && !map.hasLayer(segment)) {
-            segment.addTo(map);
-          }
-          
+          // Add segment to map and update trail decorator
+          addPolylineToMap(segment, id);
+          updateTrailDecorator(id);
+
           const distance = calculateDistance(
             prev.coords[0], prev.coords[1],
             latlng[0], latlng[1]
@@ -3934,6 +4056,20 @@ function setupEventListeners() {
           realtimeOption.textContent = `Real Time +${CONFIG.REALTIME_HISTORY_HOURS}h`;
         }
       }
+    });
+  }
+
+  // Show direction arrows checkbox
+  const showDirectionArrowsInput = document.getElementById('show-direction-arrows');
+  if (showDirectionArrowsInput) {
+    showDirectionArrowsInput.addEventListener('change', (e) => {
+      CONFIG.SHOW_DIRECTION_ARROWS = e.target.checked;
+      saveSettings();
+
+      // Update all trail decorators (will add or remove based on new setting)
+      Object.keys(DATA.deviceVisibility).forEach(deviceId => {
+        updateTrailDecorator(deviceId);
+      });
     });
   }
 
