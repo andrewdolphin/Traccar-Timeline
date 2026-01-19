@@ -2398,7 +2398,7 @@ function createTrailDecorator(deviceId, color) {
     const decorator = L.polylineDecorator(L.polyline(coords), {
       patterns: [
         {
-          offset: '50%',
+          offset: 50,
           repeat: CONFIG.ARROW_REPEAT_PIXELS,
           endOffset: 20,
           symbol: L.Symbol.arrowHead({
