@@ -1145,14 +1145,127 @@ body.dark-mode .palette-item input[type="text"] {
 .config-badge {
   display: inline-block;
   background-color: var(--bg-primary);
-  color: var(--accent-fg);                
-  font-family: monospace;          
+  color: var(--accent-fg);
+  font-family: monospace;
   font-size: 0.875rem;
   padding: 2px 6px;
   border-radius: var(--radius-lg);
   margin-left: 4px;
   border: 1px solid var(--accent-fg);
   box-shadow:  var(--modal-shadow);
+}
+
+/* ============================================================================ */
+/* CUSTOM MAP CONTROLS - Theme-aware */
+/* ============================================================================ */
+
+/* Override default Leaflet controls to match theme */
+.leaflet-control-zoom,
+.leaflet-control-layers {
+  border: none !important;
+  box-shadow: var(--modal-shadow) !important;
+}
+
+.leaflet-control-zoom a,
+.leaflet-bar a {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  transition: all var(--transition-fast) !important;
+}
+
+.leaflet-control-zoom a:hover,
+.leaflet-bar a:hover {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--accent-fg) !important;
+  color: var(--accent-fg) !important;
+}
+
+/* Custom layer switcher control */
+.custom-layer-control {
+  position: relative;
+}
+
+.layer-toggle-btn {
+  width: 30px;
+  height: 30px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: all var(--transition-fast);
+  box-shadow: var(--modal-shadow);
+}
+
+.layer-toggle-btn:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--accent-fg);
+  color: var(--accent-fg);
+}
+
+.layer-menu {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 5px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--modal-shadow);
+  padding: 8px 0;
+  min-width: 120px;
+  display: none;
+  z-index: 1000;
+}
+
+.layer-menu.show {
+  display: block;
+}
+
+.layer-menu-item {
+  padding: 8px 16px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.layer-menu-item:hover {
+  background-color: var(--bg-secondary);
+}
+
+.layer-menu-item.active {
+  font-weight: 700;
+  color: var(--accent-fg);
+  background-color: var(--accent-fg-10);
+}
+
+/* Winter theme CSS filter for map tiles - only affects base pane, not overlay pane */
+.leaflet-base-pane.winter-filter {
+  filter: brightness(1.1) contrast(1) saturate(0.3) hue-rotate(140deg);
+  transition: filter 0.3s ease;
+}
+
+/* Layer menu separator */
+.layer-menu-separator {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 8px 0;
+}
+
+.layer-menu-section-label {
+  padding: 4px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 </style>
@@ -1789,12 +1902,202 @@ function initMap() {
     if (!document.getElementById('map')) {
       throw new Error('Map container not found');
     }
-    
+
     map = L.map('map').setView([0, 0], 2);
     map.zoomControl.setPosition('bottomright');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    }).addTo(map);
+
+    // Create custom panes for proper layer ordering
+    // Base layer pane (below overlays)
+    map.createPane('basePane');
+    const basePane = map.getPane('basePane');
+    basePane.style.zIndex = 200;
+    basePane.classList.add('leaflet-base-pane');
+
+    // Overlay pane (above base layers)
+    map.createPane('overlayPane');
+    const overlayPane = map.getPane('overlayPane');
+    overlayPane.style.zIndex = 400;
+    overlayPane.classList.add('leaflet-overlay-pane');
+
+    // Define multiple tile layers - all use basePane
+    const layers = {
+      street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap',
+        pane: 'basePane'
+      }),
+      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 19,
+        attribution: '&copy; Esri',
+        pane: 'basePane'
+      }),
+      topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+        maxZoom: 17,
+        attribution: '&copy; OpenTopoMap',
+        pane: 'basePane'
+      }),
+      ignPlan: L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+        maxZoom: 19,
+        attribution: '&copy; IGN France',
+        pane: 'basePane'
+      }),
+      ignOrtho: L.tileLayer('https://data.geopf.fr/wmts?REQUEST=GetTile&SERVICE=WMTS&VERSION=1.0.0&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&LAYER=HR.ORTHOIMAGERY.ORTHOPHOTOS&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', {
+        maxZoom: 19,
+        attribution: '&copy; IGN France',
+        pane: 'basePane'
+      }),
+      cyclOSM: L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
+        maxZoom: 20,
+        attribution: '&copy; OpenStreetMap, CyclOSM',
+        pane: 'basePane'
+      }),
+      transport: L.tileLayer('https://tile.memomaps.de/tilegen/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap, MeMoMaps',
+        pane: 'basePane'
+      })
+    };
+
+    // Define overlays (separate from base layers) - use overlayPane
+    const overlays = {
+      pistes: L.tileLayer('https://tiles.opensnowmap.org/pistes/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap, OpenSnowMap',
+        pane: 'overlayPane'
+      })
+    };
+
+    // Add default layer (street map)
+    let currentLayer = 'street';
+    let winterFilterEnabled = false;
+    let pistesEnabled = false;
+    layers.street.addTo(map);
+
+    // Get tile pane for filter application
+    const getTilePane = () => map.getPane('tilePane');
+
+    // Create custom layer switcher control
+    const CustomLayerControl = L.Control.extend({
+      onAdd: function() {
+        const container = L.DomUtil.create('div', 'leaflet-bar custom-layer-control');
+
+        // Toggle button
+        const toggleBtn = L.DomUtil.create('a', 'layer-toggle-btn', container);
+        toggleBtn.href = '#';
+        toggleBtn.innerHTML = '<i class="fa-solid fa-layer-group"></i>';
+        toggleBtn.title = 'Map Layers';
+
+        // Menu
+        const menu = L.DomUtil.create('div', 'layer-menu', container);
+
+        // Base layers section
+        const baseLayers = [
+          { key: 'street', label: 'Street', icon: 'fa-map' },
+          { key: 'satellite', label: 'Satellite', icon: 'fa-satellite' },
+          { key: 'topo', label: 'Topographic', icon: 'fa-mountain' },
+          { key: 'ignPlan', label: 'IGN Plan', icon: 'fa-map-location-dot' },
+          { key: 'ignOrtho', label: 'IGN Ortho', icon: 'fa-image' },
+          { key: 'cyclOSM', label: 'Cycling', icon: 'fa-bicycle' },
+          { key: 'transport', label: 'Transport', icon: 'fa-bus' }
+        ];
+
+        // Create base layers section label
+        const baseLabel = L.DomUtil.create('div', 'layer-menu-section-label', menu);
+        baseLabel.textContent = 'Base Maps';
+
+        baseLayers.forEach(option => {
+          const item = L.DomUtil.create('div', 'layer-menu-item', menu);
+          item.innerHTML = `<i class="fa-solid ${option.icon}"></i> ${option.label}`;
+          item.dataset.layer = option.key;
+
+          if (option.key === currentLayer) {
+            item.classList.add('active');
+          }
+
+          L.DomEvent.on(item, 'click', function(e) {
+            L.DomEvent.stopPropagation(e);
+
+            // Remove current layer
+            map.removeLayer(layers[currentLayer]);
+
+            // Add new layer
+            currentLayer = option.key;
+            layers[currentLayer].addTo(map);
+
+            // Update active state for base layers only
+            menu.querySelectorAll('.layer-menu-item').forEach(i => {
+              if (i.dataset.layer && layers[i.dataset.layer]) {
+                i.classList.remove('active');
+              }
+            });
+            item.classList.add('active');
+
+            // Close menu
+            menu.classList.remove('show');
+          });
+        });
+
+        // Add separator
+        const separator = L.DomUtil.create('div', 'layer-menu-separator', menu);
+
+        // Overlays section
+        const overlayLabel = L.DomUtil.create('div', 'layer-menu-section-label', menu);
+        overlayLabel.textContent = 'Overlays';
+
+        // Pistes overlay
+        const pistesItem = L.DomUtil.create('div', 'layer-menu-item', menu);
+        pistesItem.innerHTML = '<i class="fa-solid fa-person-skiing"></i> Ski Pistes';
+        pistesItem.dataset.overlay = 'pistes';
+
+        L.DomEvent.on(pistesItem, 'click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          pistesEnabled = !pistesEnabled;
+          if (pistesEnabled) {
+            overlays.pistes.addTo(map);
+            pistesItem.classList.add('active');
+          } else {
+            map.removeLayer(overlays.pistes);
+            pistesItem.classList.remove('active');
+          }
+        });
+
+        // Winter filter overlay
+        const winterFilterItem = L.DomUtil.create('div', 'layer-menu-item', menu);
+        winterFilterItem.innerHTML = '<i class="fa-solid fa-snowflake"></i> Winter Filter';
+        winterFilterItem.dataset.overlay = 'winterFilter';
+
+        L.DomEvent.on(winterFilterItem, 'click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          winterFilterEnabled = !winterFilterEnabled;
+          if (winterFilterEnabled) {
+            basePane.classList.add('winter-filter');
+            winterFilterItem.classList.add('active');
+          } else {
+            basePane.classList.remove('winter-filter');
+            winterFilterItem.classList.remove('active');
+          }
+        });
+
+        // Toggle menu visibility
+        L.DomEvent.on(toggleBtn, 'click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          L.DomEvent.preventDefault(e);
+          menu.classList.toggle('show');
+        });
+
+        // Close menu when clicking outside
+        L.DomEvent.on(document, 'click', function() {
+          menu.classList.remove('show');
+        });
+
+        // Prevent map clicks from propagating
+        L.DomEvent.disableClickPropagation(container);
+
+        return container;
+      }
+    });
+
+    new CustomLayerControl({ position: 'bottomright' }).addTo(map);
   } catch (err) {
     console.error('Map initialization error:', err);
     showError('Failed to initialize map. Please refresh the page.');
