@@ -4233,7 +4233,7 @@ function setupEventListeners() {
       } else {
         collapseBtn.innerHTML = '<i class="fa-solid fa-caret-down"></i> ';
       }
-      
+      updateTimelineHeight();
       drawTimeline();
     };
   }
@@ -4684,7 +4684,7 @@ async function init() {
     
     // Set up event listeners BEFORE fetching data so settings button always works
     setupEventListeners();
-    updateSettingsUI(); // Initialize settings UI
+    updateSettingsUI(); 
     setupDateInputs();
     
     // Set the real-time option text dynamically based on config
@@ -4695,16 +4695,10 @@ async function init() {
         realtimeOption.textContent = `Real Time +${CONFIG.REALTIME_HISTORY_HOURS}h`;
       }
     }
-    
-    // Set up ResizeObserver to update timeline height for Leaflet controls
-    const timelineContainer = document.getElementById('timeline-container');
-    if (timelineContainer && typeof ResizeObserver !== 'undefined') {
-      const resizeObserver = new ResizeObserver(() => {
-        updateTimelineHeight();
-      });
-      resizeObserver.observe(timelineContainer);
-    }
-    
+   
+    // Initial timeline height update
+    updateTimelineHeight();
+ 
     // Now fetch devices - if this fails, settings button still works
     await fetchDevices();
     
