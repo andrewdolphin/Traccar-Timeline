@@ -1378,6 +1378,11 @@ body.dark-mode .palette-item input[type="text"] {
           </div>
 
           <div class="settings-group">
+            <label for="arrow-spacing">Arrow spacing: <span id="arrow-spacing-value">200</span> pixels</label>
+            <input type="range" id="arrow-spacing" min="50" max="500" step="10" value="200" style="width: 100%;">
+          </div>
+
+          <div class="settings-group">
             <label>Device Color Palette:</label>
             <div id="palette-manager" class="palette-manager"></div>
             <button id="add-palette-color" class="secondary" style="margin-top: 8px;"><i class="fa-solid fa-palette"></i> Add Color</button>
@@ -1473,7 +1478,7 @@ const CONFIG = {
   REALTIME_HISTORY_HOURS: 3,
   DRAG_THRESHOLD_PX: 5, // Minimum pixels to move before considering it a drag (vs tap/click)
   SHOW_DIRECTION_ARROWS: true, // Show arrows on polylines to indicate direction of travel
-  ARROW_REPEAT_PIXELS: 100, // Pixels between direction arrows on trails
+  ARROW_REPEAT_PIXELS: 200, // Pixels between direction arrows on trails
   GEOCODE_CACHE: {},
   // Time constants
   MS_PER_SECOND: 1000,
@@ -1605,6 +1610,7 @@ function loadSettings() {
       if (settings.movementThreshold) CONFIG.MOVEMENT_THRESHOLD_M = settings.movementThreshold;
       if (settings.realtimeHours) CONFIG.REALTIME_HISTORY_HOURS = settings.realtimeHours;
       if (settings.showDirectionArrows !== undefined) CONFIG.SHOW_DIRECTION_ARROWS = settings.showDirectionArrows;
+      if (settings.arrowSpacing) CONFIG.ARROW_REPEAT_PIXELS = settings.arrowSpacing;
       if (settings.palette && Array.isArray(settings.palette)) CONFIG.PALETTE = settings.palette;
       if (settings.foregroundColor) CONFIG.FOREGROUND_COLOR = settings.foregroundColor;
       if (settings.backgroundColor) CONFIG.BACKGROUND_COLOR = settings.backgroundColor;
@@ -1631,6 +1637,7 @@ function saveSettings() {
     movementThreshold: CONFIG.MOVEMENT_THRESHOLD_M,
     realtimeHours: CONFIG.REALTIME_HISTORY_HOURS,
     showDirectionArrows: CONFIG.SHOW_DIRECTION_ARROWS,
+    arrowSpacing: CONFIG.ARROW_REPEAT_PIXELS,
     palette: CONFIG.PALETTE,
     foregroundColor: CONFIG.FOREGROUND_COLOR,
     backgroundColor: CONFIG.BACKGROUND_COLOR
@@ -1648,6 +1655,8 @@ function updateSettingsUI() {
   const movementThresholdInput = document.getElementById('movement-threshold');
   const realtimeHoursInput = document.getElementById('realtime-hours');
   const showDirectionArrowsInput = document.getElementById('show-direction-arrows');
+  const arrowSpacingInput = document.getElementById('arrow-spacing');
+  const arrowSpacingValue = document.getElementById('arrow-spacing-value');
   const foregroundColorInput = document.getElementById('foreground-color');
   const foregroundColorTextInput = document.getElementById('foreground-color-text');
   const backgroundColorInput = document.getElementById('background-color');
@@ -1660,6 +1669,8 @@ function updateSettingsUI() {
   if (movementThresholdInput) movementThresholdInput.value = CONFIG.MOVEMENT_THRESHOLD_M;
   if (realtimeHoursInput) realtimeHoursInput.value = CONFIG.REALTIME_HISTORY_HOURS;
   if (showDirectionArrowsInput) showDirectionArrowsInput.checked = CONFIG.SHOW_DIRECTION_ARROWS;
+  if (arrowSpacingInput) arrowSpacingInput.value = CONFIG.ARROW_REPEAT_PIXELS;
+  if (arrowSpacingValue) arrowSpacingValue.textContent = CONFIG.ARROW_REPEAT_PIXELS;
   if (foregroundColorInput) foregroundColorInput.value = CONFIG.FOREGROUND_COLOR || '#4ECDC4';
   if (foregroundColorTextInput) foregroundColorTextInput.value = CONFIG.FOREGROUND_COLOR || '#4ECDC4';
   if (backgroundColorInput) backgroundColorInput.value = CONFIG.BACKGROUND_COLOR || '#2A9D8F';
@@ -1873,6 +1884,7 @@ function importSettings(file) {
       if (settings.movementThreshold) CONFIG.MOVEMENT_THRESHOLD_M = settings.movementThreshold;
       if (settings.realtimeHours) CONFIG.REALTIME_HISTORY_HOURS = settings.realtimeHours;
       if (settings.showDirectionArrows !== undefined) CONFIG.SHOW_DIRECTION_ARROWS = settings.showDirectionArrows;
+      if (settings.arrowSpacing) CONFIG.ARROW_REPEAT_PIXELS = settings.arrowSpacing;
       if (settings.palette && Array.isArray(settings.palette)) CONFIG.PALETTE = settings.palette;
       if (settings.foregroundColor) CONFIG.FOREGROUND_COLOR = settings.foregroundColor;
       if (settings.backgroundColor) CONFIG.BACKGROUND_COLOR = settings.backgroundColor;
@@ -2701,9 +2713,8 @@ function createTrailDecorator(deviceId, color) {
     const decorator = L.polylineDecorator(L.polyline(coords), {
       patterns: [
         {
-          offset: 50,
+          offset: 0,
           repeat: CONFIG.ARROW_REPEAT_PIXELS,
-          endOffset: 20,
           symbol: L.Symbol.arrowHead({
             pixelSize: 10,
             polygon: false,
@@ -4370,6 +4381,23 @@ function setupEventListeners() {
       saveSettings();
 
       // Update all trail decorators (will add or remove based on new setting)
+      Object.keys(DATA.deviceVisibility).forEach(deviceId => {
+        updateTrailDecorator(deviceId);
+      });
+    });
+  }
+
+  // Arrow spacing slider
+  const arrowSpacingInput = document.getElementById('arrow-spacing');
+  const arrowSpacingValue = document.getElementById('arrow-spacing-value');
+  if (arrowSpacingInput && arrowSpacingValue) {
+    arrowSpacingInput.addEventListener('input', (e) => {
+      const value = parseInt(e.target.value);
+      arrowSpacingValue.textContent = value;
+      CONFIG.ARROW_REPEAT_PIXELS = value;
+      saveSettings();
+
+      // Update all trail decorators with new spacing
       Object.keys(DATA.deviceVisibility).forEach(deviceId => {
         updateTrailDecorator(deviceId);
       });
