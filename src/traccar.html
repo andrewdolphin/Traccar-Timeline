@@ -1284,10 +1284,10 @@ body.dark-mode .palette-item input[type="text"] {
   <!-- Legend -->
   <aside  id="legend">
     <header class="legend-header">
-      <button id="legend-toggle-btn" class="secondary legend-toggle"><i class="fa-solid fa-map"></i></button>
+      <button id="legend-toggle-btn" class="secondary legend-toggle"><i class="fa-regular fa-rectangle-list"></i></button>
       <span>Devices</span>
     </header>
-    <div id="legend-items" class="legend-items"></div>
+    <div id="legend-items" class="legend-items collapsed"></div>
   </aside>
 
   <!-- Time Selector -->
@@ -1434,7 +1434,7 @@ body.dark-mode .palette-item input[type="text"] {
   <section id="timeline-container">
     <div id="timeline-title">
       <div id="timeline-title-left">
-        <button id="timeline-collapse-btn" class="secondary timeline-collapse-btn"><i class="fa-solid fa-caret-down"></i></button>
+        <button id="timeline-collapse-btn" class="secondary timeline-collapse-btn"><i class="fa-solid fa-caret-up"></i></button>
        
       </div>
       <div id="timeline-title-center">Timeline</div>
@@ -1529,8 +1529,8 @@ const STATE = {
   zoomEndTime: null,
   
   // UI state
-  isTimelineCollapsed: false,
-  isLegendCollapsed: false,
+  isTimelineCollapsed: true,
+  isLegendCollapsed: true,
   initialZoomDone: false,
   soloDeviceId: null, 
   editingColorIndex: null,
