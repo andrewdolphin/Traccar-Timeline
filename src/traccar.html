@@ -79,6 +79,7 @@
   --z-legend: 1000;
   --z-dropdown: 1001;
   --z-scrubber: 10;
+  --z-error: 10000;
   --z-modal: 10001;
   --z-color-editor: 10002;
   
@@ -862,138 +863,57 @@ body.dark-mode .timeline-row-bg {
 
 #settings-content {
   background: var(--modal-bg);
-  padding: var(--spacing-xl);
   border-radius: var(--radius-lg);
   box-shadow: var(--modal-shadow);
   min-width: 600px;
   max-width: 800px;
   max-height: 90vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 #settings-content h3 {
-  margin-top: 0;
-  margin-bottom: var(--spacing-lg);
+  position: sticky;
+  top: 0;
+  background: var(--modal-bg);
+  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-sm) var(--spacing-xl);
+  margin: 0;
+  z-index: 10;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+#settings-content p.settings-description {
+  font-size: 0.8125rem; 
+  color: #666;
+  margin-top:0;
+}
+#settings-content > p {
+  padding: 0 var(--spacing-xl);
+  margin-top: 8px;
+  margin-bottom: var(--spacing-md);
+}
+
+.settings-columns {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 var(--spacing-xl) var(--spacing-md) var(--spacing-xl);
+}
+
+#settings-content .dialog-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--modal-bg);
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl) var(--spacing-xl);
+  margin: 0;
+  border-top: 1px solid var(--border-color);
+  z-index: 10;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .settings-columns {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  margin-bottom: 20px;
-}
-
-@media (max-width: 768px) {
-  .settings-columns {
-    grid-template-columns: 1fr;
-  }
-
-  #settings-content {
-    min-width: unset;
-    width: 100vw;
-    height: 100vh;
-    max-height: 100vh;
-    border-radius: 0;
-    margin: 0;
-    padding: var(--spacing-lg);
-  }
-
-  #settings-modal {
-    padding: 0;
-    align-items: stretch;
-  }
-
-  #color-editor-content {
-    width: 90vw;
-    max-width: 400px;
-  }
-
-  .palette-manager {
-    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-  }
-
-  .palette-color-swatch {
-    width: 40px;
-    height: 40px;
-  }
-
-  /* Mobile: Two-column grid for compact settings */
-  .settings-row-compact {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .settings-row-compact .settings-group {
-    margin-bottom: 0;
-  }
-
-  /* Mobile: Legend as top bar */
-  #legend {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: auto;
-    border-radius: 0;
-    padding: var(--spacing-sm);
-    z-index: 1100;
-  }
-
-  #legend:not(.collapsed) {
-    height: 100dvh;
-    overflow-y: auto;
-    align-items: flex-start;
-  }
-
-  #legend.collapsed {
-    height: auto;
-  }
-
-  .legend-header {
-    width: 100%;
-    flex-wrap: nowrap;
-  }
-
-  .legend-devices-label {
-    display: none;
-  }
-
-  #legend-search {
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* Move time selector into legend header on mobile */
-  .legend-header #time-selector {
-    display: flex !important;
-    flex-shrink: 0;
-    margin-left: var(--spacing-xs);
-    position: static;
-    background: transparent;
-    box-shadow: none;     
-  }
-
-  .legend-header #time-selector select {
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-    font-size: 0.875rem;
-    min-height: 32px;
-  }
-
-  .legend-header #time-selector button {
-    display: none;
-  }
-
-  .legend-items {
-    margin-top: var(--spacing-sm);
-    align-self: flex-start;
-    width: 100%;
-  }
 }
 
 .setting-row {
@@ -1022,7 +942,7 @@ body.dark-mode .setting-row select {
 }
 
 .settings-group {
-  margin-bottom: 20px;
+  margin: 10px 0;
 }
 
 .settings-group select {
@@ -1210,8 +1130,8 @@ body.dark-mode .palette-item input[type="text"] {
 }
 
 .credentials-group {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 8px;
 }
@@ -1220,6 +1140,7 @@ body.dark-mode .palette-item input[type="text"] {
   display: flex;
   gap: 8px;
   margin-top: 12px;
+  grid-column: 1 / -1;
 }
 
 .import-export-group button {
@@ -1238,21 +1159,59 @@ body.dark-mode .palette-item input[type="text"] {
   margin-bottom: 10px;
 }
 
-#error-notification {
+#error-modal {
+  display: none;
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--modal-overlay);
+  z-index: var(--z-error);
+  justify-content: center;
+  align-items: center;
+}
+#error-notification li {
+    line-height: 2em;}
 
+#error-notification {
   background: var(--modal-bg);
-  padding: var(--spacing-xl);
   border-radius: var(--radius-lg);
   box-shadow: var(--modal-shadow);
   min-width: 600px;
   max-width: 800px;
   max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#error-notification h3 {
+  position: sticky;
+  top: 0;
+  background: var(--modal-bg);
+  padding: var(--spacing-xl) var(--spacing-xl) var(--spacing-sm) var(--spacing-xl);
+  margin: 0;
+  z-index: 10;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+#error-notification > p {
+  flex: 1;
   overflow-y: auto;
-  
+  padding: var(--spacing-md) var(--spacing-xl);
+  margin: 0;
+}
+
+#error-notification .dialog-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--modal-bg);
+  padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl) var(--spacing-xl);
+  margin: 0;
+  border-top: 1px solid var(--border-color);
+  z-index: 10;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
 }
 
 .config-badge {
@@ -1381,6 +1340,224 @@ body.dark-mode .palette-item input[type="text"] {
   letter-spacing: 0.5px;
 }
 
+/* ============================================================================ */
+/* MOBILE RESPONSIVE STYLES */
+/* ============================================================================ */
+
+@media (max-width: 768px) {
+  .settings-columns {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  #settings-content {
+    min-width: unset;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #settings-content h3 {
+    position: sticky;
+    top: 0;
+    background: var(--modal-bg);
+    padding: var(--spacing-md) 0 0 var(--spacing-lg);
+    margin: 0;
+    z-index: 10;
+    /* border-bottom: 1px solid var(--border-color); */
+  }
+
+  #settings-content > p {
+    padding: 0 var(--spacing-lg);
+  }
+
+  #settings-content .settings-columns {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+  }
+
+  #settings-content .dialog-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--modal-bg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: 0;
+    border-top: 1px solid var(--border-color);
+    z-index: 10;
+  }
+
+  #settings-modal {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  /* Make all settings groups within columns display in 2-column grid on mobile */
+  .settings-columns > div {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* Settings rows that contain two settings-group children should span 2 columns and display as grid */
+  .settings-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  /* Full-width exceptions for certain settings */
+  .settings-columns > div > .settings-group:first-child,
+  .settings-columns > div > .settings-group:has(#theme-select),
+  .settings-columns > div > .settings-group:has(#realtime-hours),
+  .settings-columns > div > .settings-group:has(#show-direction-arrows),
+  .settings-columns > div > .settings-group:has(#arrow-spacing),
+  .settings-columns > div > .settings-group:has(#palette-manager) {
+    grid-column: 1 / -1;
+  }
+
+  .settings-group {
+    margin: 5px 0;
+  }
+
+  #color-editor-content {
+    width: 90vw;
+    max-width: 400px;
+  }
+
+  .palette-manager {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  }
+
+  .palette-color-swatch {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Mobile: Error modal full screen */
+  #error-modal {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  #error-notification {
+    min-width: unset;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #error-notification h3 {
+    position: sticky;
+    top: 0;
+    background: var(--modal-bg);
+    padding: var(--spacing-md) var(--spacing-lg) var(--spacing-sm) var(--spacing-lg);
+    margin: 0;
+    z-index: 10;
+  }
+
+  #error-notification > p {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 var(--spacing-lg) var(--spacing-lg) var(--spacing-lg);
+    margin: 0;
+  }
+
+  #error-notification .dialog-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--modal-bg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin: 0;
+    border-top: 1px solid var(--border-color);
+    z-index: 10;
+  }
+
+  /* Mobile: Legend as top bar */
+  #legend {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    border-radius: 0;
+    padding: var(--spacing-sm);
+    z-index: 1100;
+  }
+
+  #legend:not(.collapsed) {
+    height: 100dvh;
+    overflow-y: auto;
+    align-items: flex-start;
+  }
+
+  #legend.collapsed {
+    height: auto;
+  }
+
+  .legend-header {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .legend-devices-label {
+    display: none;
+  }
+
+  #legend-search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Move time selector into legend header on mobile */
+  .legend-header #time-selector {
+    display: flex !important;
+    flex-shrink: 0;
+    margin-left: var(--spacing-xs);
+    position: static;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .legend-header #time-selector select {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    min-height: 32px;
+  }
+
+  .legend-header #time-selector button {
+    display: none;
+  }
+
+  .legend-items {
+    margin-top: var(--spacing-sm);
+    align-self: flex-start;
+    width: 100%;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -1426,8 +1603,9 @@ body.dark-mode .palette-item input[type="text"] {
   <!-- Settings Modal -->
   <section id="settings-modal">
     <div id="settings-content">
-      <h3>Settings</h3>
-      <p style="margin-top: -8px; margin-bottom: 16px; font-size: 0.8125rem; color: #666;">Settings are saved automatically</p>
+      <h3><i class="fa-solid fa-gear" style="color: var(--accent-fg);"></i>
+        Settings</h3>
+      <p class="settings-description">Settings are saved automatically</p>
       
       <div class="settings-columns">
         <!-- Left Column: API & Performance -->
@@ -1441,7 +1619,7 @@ body.dark-mode .palette-item input[type="text"] {
             </div>
           </div>
 
-          <div class="settings-row-compact">
+          <div class="settings-row">
             <div class="settings-group">
               <label>Poll Interval (ms):</label>
               <input type="number" id="poll-interval" value="5000" min="1000" step="1000">
@@ -1470,7 +1648,7 @@ body.dark-mode .palette-item input[type="text"] {
             </select>
           </div>
 
-          <div class="settings-row-compact">
+          <div class="settings-row">
             <div class="settings-group">
               <label>Foreground Color:</label>
               <div class="color-picker-wrapper">
@@ -1506,12 +1684,13 @@ body.dark-mode .palette-item input[type="text"] {
             <button id="add-palette-color" class="secondary" style="margin-top: 8px;"><i class="fa-solid fa-palette"></i> Add Color</button>
           </div>
         </div>
+
+        <div class="import-export-group">
+          <button id="export-settings" class="secondary"><i class="fa-solid fa-download"></i> Export Settings</button>
+          <button id="import-settings" class="secondary"><i class="fa-solid fa-upload"></i> Import Settings</button>
+        </div>
       </div>
 
-      <div class="import-export-group">
-        <button id="export-settings" class="secondary"><i class="fa-solid fa-download"></i> Export Settings</button>
-        <button id="import-settings" class="secondary"><i class="fa-solid fa-upload"></i> Import Settings</button>
-      </div>
       <input type="file" id="import-file-input" accept=".json" style="display: none;">
 
       <div class="dialog-actions">
@@ -2257,19 +2436,25 @@ function clearMap() {
 // ============================================================================
 
 function showError(message, canRetry = false) {
+  // Create modal wrapper (like settings-modal)
+  const errorModal = document.createElement('div');
+  errorModal.id = 'error-modal';
+  errorModal.style.display = 'flex';
+
+  // Create content container (like settings-content)
   const errorDiv = document.createElement('div');
   errorDiv.id = 'error-notification';
-  
-  const errorTitle = document.createElement('h2');
+
+  const errorTitle = document.createElement('h3');
   errorTitle.innerHTML = '<i class="fa-solid fa-triangle-exclamation error-icon " style="color: var(--accent-fg);"></i> We\'ve Got Issues';
-  
+
   errorDiv.appendChild(errorTitle);
-  
+
   const messageP = document.createElement('p');
   messageP.innerHTML = message;
   messageP.style.marginBottom = canRetry ? '16px' : '0';
   errorDiv.appendChild(messageP);
-  
+
   if (canRetry) {
 
     const dialogActions = document.createElement('div');
@@ -2300,11 +2485,12 @@ function showError(message, canRetry = false) {
     dialogActionsRight.appendChild(settingsBtn);
 
     dialogActions.appendChild(dialogActionsRight);
-    
+
     errorDiv.appendChild(dialogActions);
   }
-  
-  document.body.appendChild(errorDiv);
+
+  errorModal.appendChild(errorDiv);
+  document.body.appendChild(errorModal);
   return errorDiv;
 }
 
@@ -3054,7 +3240,7 @@ async function fetchDevices() {
     console.error('Error fetching devices:', err);
 
 
-    throw new Error(`Failed to connect to Traccar API: ${err.message}<br><br>Please check:<ul><li>API URL is correct.  <span class="config-badge"><strong>CONFIG.API_URL:</strong> ${CONFIG.API_URL}</span></li><li>Traccar server is running</li></ul><strong>Note:</strong> If this is your first time running the app, open Settings and set the Traccar API URL, then reload.`);
+    throw new Error(`Failed to connect to Traccar API: ${err.message}<br><br>Please check:<ul><li>Traccar server is running</li><li>API URL is correctly set<br /><span class="config-badge"><strong>CONFIG.API_URL:</strong> ${CONFIG.API_URL}</span></li></ul><strong>Note:</strong> If this is your first time running the app, open Settings and set the Traccar API URL, then reload.`);
     /*
     const errorDiv = showError(`Failed to connect to Traccar API: ${err.message}<br><br>Please check:<ul><li>API URL is correct: ${CONFIG.API_URL}</li><li>Traccar server is running</li></ul><strong>Note:</strong>If this is your first time running the app, open Settings and set the Traccar API URL, then reload.`, true);
     
@@ -3073,9 +3259,9 @@ async function fetchDevices() {
 async function fetchHistoryForRange(fromTime, toTime) {
   try {
     // Clear any existing error notifications
-    const errorNotification = document.getElementById('error-notification');
-    if (errorNotification) {
-      errorNotification.remove();
+    const errorModal = document.getElementById('error-modal');
+    if (errorModal) {
+      errorModal.remove();
     }
     
     clearMap();
@@ -3198,9 +3384,9 @@ async function fetchHistoryForRange(fromTime, toTime) {
     const retryBtn = document.getElementById('retry-btn');
     if (retryBtn) {
       retryBtn.onclick = () => {
-        const errorNotification = document.getElementById('error-notification');
-        if (errorNotification) {
-          errorNotification.remove();
+        const errorModal = document.getElementById('error-modal');
+        if (errorModal) {
+          errorModal.remove();
         }
         fetchHistoryForRange(fromTime, toTime);
       };
@@ -4409,9 +4595,19 @@ function setupEventListeners() {
     };
   }
 
-  // Device search filtering
+  // Device search filtering and focus behavior
   const legendSearch = document.getElementById('legend-search');
   if (legendSearch) {
+    // On focus: expand legend to show items
+    legendSearch.addEventListener('focus', () => {
+      if (STATE.isLegendCollapsed) {
+        STATE.isLegendCollapsed = false;
+        legendToggleBtn.innerHTML = '<i class="fa-solid fa-map"></i>';
+        legend.classList.remove('collapsed');
+      }
+    });
+
+    // Filter items as user types
     legendSearch.addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase().trim();
       const legendItems = document.querySelectorAll('.legend-item');
@@ -4427,7 +4623,46 @@ function setupEventListeners() {
         item.style.display = matches ? '' : 'none';
       });
     });
+
+    // Escape key: collapse legend
+    legendSearch.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        legendSearch.blur();
+        if (!STATE.isLegendCollapsed) {
+          STATE.isLegendCollapsed = true;
+          legendToggleBtn.innerHTML = '<i class="fa-regular fa-rectangle-list"></i>';
+          legend.classList.add('collapsed');
+        }
+      }
+    });
   }
+
+  // Click outside legend: collapse legend (only if search has been focused)
+  let searchWasFocused = false;
+  if (legendSearch) {
+    legendSearch.addEventListener('focus', () => {
+      searchWasFocused = true;
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!legend || !legendSearch) return;
+
+    // Don't collapse if legend is already collapsed
+    if (STATE.isLegendCollapsed) return;
+
+    // Don't collapse if clicking inside legend
+    if (legend.contains(e.target)) return;
+
+    // Only collapse if search was previously focused (user initiated the expansion)
+    if (searchWasFocused && !STATE.isLegendCollapsed) {
+      STATE.isLegendCollapsed = true;
+      legendToggleBtn.innerHTML = '<i class="fa-regular fa-rectangle-list"></i>';
+      legend.classList.add('collapsed');
+      searchWasFocused = false;
+    }
+  });
 
   // Move time selector to legend on mobile
   let timeSelectorOriginalParent = null;
@@ -4949,9 +5184,9 @@ async function init() {
 
         await sleep(800);
 
-        const errorNotification = document.getElementById('error-notification');
-        if (errorNotification) {
-          errorNotification.remove();
+        const errorModal = document.getElementById('error-modal');
+        if (errorModal) {
+          errorModal.remove();
         }
 
         await sleep(200); 
