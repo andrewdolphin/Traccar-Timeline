@@ -255,11 +255,21 @@ body.modal-open {
   position: absolute;
   top: 10px;
   left: 10px;
+  min-width: 180px;
   z-index: var(--z-legend);
   background: var(--bg-primary);
   padding: 10px;
   border-radius: var(--radius-md);
   box-shadow: var(--modal-shadow);
+  height: calc(100% - (var(--timeline-height, 150px) + 20px));
+  transition: height 0.3s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#legend.collapsed {
+  height: auto;
 }
 
 .legend-header {
@@ -277,19 +287,44 @@ body.modal-open {
   font-size: 1rem; /* 16px - increased from 14px */
   padding: 4px;
   line-height: 1;
+  flex-shrink: 0;
   /* min-width: 2.5rem;
   min-height: 2.5rem; */
 }
 
-.legend-items {
-  overflow-y: auto;
-  transition: max-height 0.3s ease;
-  max-height: 180px;
+.legend-devices-label {
+  flex-shrink: 0;
 }
 
-.legend-items.collapsed {
-  max-height: 0;
-  overflow: hidden;
+#legend-search {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: white;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color var(--transition-fast);
+  min-height: 32px;
+}
+
+#legend-search:focus {
+  border-color: var(--accent-fg);
+}
+
+#legend-search::placeholder {
+  color: var(--text-tertiary);
+}
+
+.legend-items {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+#legend.collapsed .legend-items {
+  display: none;
 }
 
 .legend-item {
@@ -301,6 +336,10 @@ body.modal-open {
   border-radius: var(--radius-sm);
   transition: background var(--transition-normal);
   font-size: 0.875rem;
+}
+
+.legend-item:first-child {
+  margin-top: var(--spacing-sm);
 }
 
 .legend-item:hover {
@@ -888,6 +927,73 @@ body.dark-mode .timeline-row-bg {
   .settings-row-compact .settings-group {
     margin-bottom: 0;
   }
+
+  /* Mobile: Legend as top bar */
+  #legend {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    border-radius: 0;
+    padding: var(--spacing-sm);
+    z-index: 1100;
+  }
+
+  #legend:not(.collapsed) {
+    height: 100dvh;
+    overflow-y: auto;
+    align-items: flex-start;
+  }
+
+  #legend.collapsed {
+    height: auto;
+  }
+
+  .legend-header {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .legend-devices-label {
+    display: none;
+  }
+
+  #legend-search {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* Move time selector into legend header on mobile */
+  .legend-header #time-selector {
+    display: flex !important;
+    flex-shrink: 0;
+    margin-left: var(--spacing-xs);
+    position: static;
+    background: transparent;
+    box-shadow: none;     
+  }
+
+  .legend-header #time-selector select {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    min-height: 32px;
+  }
+
+  .legend-header #time-selector button {
+    display: none;
+  }
+
+  .legend-items {
+    margin-top: var(--spacing-sm);
+    align-self: flex-start;
+    width: 100%;
+  }
 }
 
 .setting-row {
@@ -1282,12 +1388,12 @@ body.dark-mode .palette-item input[type="text"] {
 <section id="map"></section>
 <main id="app">
   <!-- Legend -->
-  <aside  id="legend">
+  <aside  id="legend" class="collapsed">
     <header class="legend-header">
       <button id="legend-toggle-btn" class="secondary legend-toggle"><i class="fa-regular fa-rectangle-list"></i></button>
-      <span>Devices</span>
+      <input type="text" id="legend-search" placeholder="Search Devices">
     </header>
-    <div id="legend-items" class="legend-items collapsed"></div>
+    <div id="legend-items" class="legend-items"></div>
   </aside>
 
   <!-- Time Selector -->
@@ -1309,8 +1415,13 @@ body.dark-mode .palette-item input[type="text"] {
     <input type="datetime-local" id="custom-from">
     <label>To:</label>
     <input type="datetime-local" id="custom-to">
-    <button id="custom-apply" class="primary" style="width: 100%;"><i class="fa-solid fa-check"></i> Apply</button>
-  </section>
+    <div class="dialog-actions">
+      <div class="dialog-actions-right">
+        <button id="cancel-custom" class="secondary">Close</button>
+        <button id="custom-apply" class="primary" style="width: 100%;"><i class="fa-solid fa-check"></i> Apply</button>
+      </div>  
+    </div>
+    </section>
 
   <!-- Settings Modal -->
   <section id="settings-modal">
@@ -1448,7 +1559,7 @@ body.dark-mode .palette-item input[type="text"] {
     
     <div id="timeline-wrapper">
       <div id="timeline">
-        <div id="timeline-labels-column"></div>
+        <div id="timeline-labels-column" class="collapsed"></div>
         <div id="timeline-devices">
           <div id="scrubber" class="timeline-scrubber"></div>
         </div>
@@ -2522,10 +2633,37 @@ function updateLegend(highlightedDevices = null) {
   Object.keys(DATA.deviceNames).forEach(id => {
     const item = document.createElement('div');
     item.className = 'legend-item';
-    
+
     // Check if device has position data in current time range
     const hasDataInRange = DATA.history[id] && DATA.history[id].length > 0;
     const isVisible = DATA.deviceVisibility[id];
+
+    // Add data attributes for filtering
+    const device = DATA.devices[id];
+    item.dataset.deviceId = id;
+    item.dataset.deviceName = DATA.deviceNames[id].toLowerCase();
+
+    // Add status for filtering
+    if (device && device.lastUpdate) {
+      const lastUpdate = new Date(device.lastUpdate);
+      const minutesAgo = Math.floor((new Date() - lastUpdate) / CONFIG.MS_PER_MINUTE);
+      if (minutesAgo < 2) {
+        item.dataset.status = 'online';
+      } else if (minutesAgo < 15) {
+        item.dataset.status = 'recent';
+      } else {
+        item.dataset.status = 'offline';
+      }
+      item.dataset.lastUpdate = device.lastUpdate;
+    } else {
+      item.dataset.status = 'unknown';
+    }
+
+    // Add aria attributes for accessibility
+    item.setAttribute('role', 'button');
+    item.setAttribute('aria-label', `${DATA.deviceNames[id]}, ${item.dataset.status}`);
+    item.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
+    item.setAttribute('tabindex', '0');
     
     // Apply appropriate classes
     if (!isVisible) {
@@ -2548,8 +2686,7 @@ function updateLegend(highlightedDevices = null) {
     
     const status = document.createElement('span');
     status.className = 'legend-item-status';
-    
-    const device = DATA.devices[id];
+
     if (device) {
       const lastUpdate = device.lastUpdate ? new Date(device.lastUpdate) : null;
       if (lastUpdate) {
@@ -2594,7 +2731,7 @@ function updateLegend(highlightedDevices = null) {
           // Find closest position to locked time
           let closestPos = history[0];
           let minDiff = Math.abs(history[0].timestamp - STATE.lockedTime);
-          
+
           for (const pos of history) {
             const diff = Math.abs(pos.timestamp - STATE.lockedTime);
             if (diff < minDiff) {
@@ -2602,10 +2739,10 @@ function updateLegend(highlightedDevices = null) {
               closestPos = pos;
             }
           }
-          
+
           // Focus on this position and show popup
           centerMapWithPopup(closestPos.coords, 15);
-          
+
           // Use temp marker if it exists, otherwise create one
           if (DATA.tempMarkers[id]) {
             DATA.tempMarkers[id].openPopup();
@@ -2624,7 +2761,7 @@ function updateLegend(highlightedDevices = null) {
             tempMarker.openPopup();
 
             DATA.tempMarkers[id] = tempMarker;
-            
+
             // Hide main marker
             if (DATA.markers[id] && map.hasLayer(DATA.markers[id])) {
               safeRemove(DATA.markers[id]);
@@ -2635,6 +2772,17 @@ function updateLegend(highlightedDevices = null) {
         // Normal behavior: focus on most recent marker
         centerMapWithPopup(DATA.markers[id].getLatLng(), 15);
         DATA.markers[id].openPopup();
+      }
+
+      // Auto-collapse legend on mobile after selecting a device
+      if (window.innerWidth <= 768) {
+        const legend = document.getElementById('legend');
+        const legendToggleBtn = document.getElementById('legend-toggle-btn');
+        if (legend && legendToggleBtn && !STATE.isLegendCollapsed) {
+          STATE.isLegendCollapsed = true;
+          legendToggleBtn.innerHTML = '<i class="fa-regular fa-rectangle-list"></i>';
+          legend.classList.add('collapsed');
+        }
       }
     };
     
@@ -4246,20 +4394,77 @@ function setupEventListeners() {
   }
 
   const legendToggleBtn = document.getElementById('legend-toggle-btn');
-  const legendItems = document.getElementById('legend-items');
-  if (legendToggleBtn && legendItems) {
+  const legend = document.getElementById('legend');
+  if (legendToggleBtn && legend) {
     legendToggleBtn.onclick = () => {
       STATE.isLegendCollapsed = !STATE.isLegendCollapsed;
-      
+
       if (STATE.isLegendCollapsed) {
         legendToggleBtn.innerHTML = '<i class="fa-regular fa-rectangle-list"></i>';
-        legendItems.classList.add('collapsed');
+        legend.classList.add('collapsed');
       } else {
         legendToggleBtn.innerHTML = '<i class="fa-solid fa-map"></i>';
-        legendItems.classList.remove('collapsed');
+        legend.classList.remove('collapsed');
       }
     };
   }
+
+  // Device search filtering
+  const legendSearch = document.getElementById('legend-search');
+  if (legendSearch) {
+    legendSearch.addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase().trim();
+      const legendItems = document.querySelectorAll('.legend-item');
+
+      legendItems.forEach(item => {
+        const deviceName = item.dataset.deviceName || '';
+        const deviceStatus = item.dataset.status || '';
+
+        // Match against device name or status
+        const matches = deviceName.includes(searchTerm) ||
+                       deviceStatus.includes(searchTerm);
+
+        item.style.display = matches ? '' : 'none';
+      });
+    });
+  }
+
+  // Move time selector to legend on mobile
+  let timeSelectorOriginalParent = null;
+  let timeSelectorOriginalNextSibling = null;
+
+  function setupMobileLayout() {
+    const timeSelector = document.getElementById('time-selector');
+    const legendHeader = document.querySelector('.legend-header');
+    const app = document.getElementById('app');
+
+    if (!timeSelector || !legendHeader || !app) return;
+
+    if (window.innerWidth <= 768) {
+      // Mobile: Move time selector into legend header
+      if (timeSelector.parentElement !== legendHeader) {
+        // Store original position for restoration
+        timeSelectorOriginalParent = timeSelector.parentElement;
+        timeSelectorOriginalNextSibling = timeSelector.nextSibling;
+
+        // Move it into legend header
+        legendHeader.appendChild(timeSelector);
+      }
+    } else {
+      // Desktop: Move time selector back to original position
+      if (timeSelectorOriginalParent && timeSelector.parentElement === legendHeader) {
+        if (timeSelectorOriginalNextSibling) {
+          timeSelectorOriginalParent.insertBefore(timeSelector, timeSelectorOriginalNextSibling);
+        } else {
+          timeSelectorOriginalParent.appendChild(timeSelector);
+        }
+      }
+    }
+  }
+
+  // Setup mobile layout on load and resize
+  setupMobileLayout();
+  window.addEventListener('resize', setupMobileLayout);
 
   const settingsBtn = document.getElementById('settings-btn');
   const settingsModal = document.getElementById('settings-modal');
@@ -4601,10 +4806,17 @@ function setupEventListeners() {
   }
 
   const customApply = document.getElementById('custom-apply');
+  const customCancel = document.getElementById('cancel-custom');
   const customFrom = document.getElementById('custom-from');
   const customTo = document.getElementById('custom-to');
   
   if (customApply && customFrom && customTo) {
+    customCancel.onclick = () => {
+      if (customDiv) {
+        customDiv.style.display = 'none';
+      }
+    };
+
     customApply.onclick = () => {
       const fromVal = customFrom.value;
       const toVal = customTo.value;
