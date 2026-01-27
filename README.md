@@ -3,7 +3,7 @@ Simple html single page web app for viewing Traccar API GPS data. Uses timeline-
 
 [![Built with Claude](https://img.shields.io/badge/Built%20with-Claude%20AI-5A67D8)](https://claude.ai)
 
-Just want to see it in action: **[Traccar-Timeline](https://iamdabe.github.io/Traccar-Timeline/traccar.html)** on github pages.
+Just want to see it in action: **[Traccar-Timeline](https://iamdabe.github.io/Traccar-Timeline/src/traccar.html)** on github pages.
 
 ## Contents
 - `src/traccar.html` - single page HTML/JS Traccar API timeline app.
@@ -69,12 +69,46 @@ Screenshots from both mobile and desktop experierences.
 
 </div>
 
+
+
 ## Install
-Download the `traccar.html`  file to your pc and load it in chrome! - That's it! or visit https://iamdabe.github.io/Traccar-Timeline/traccar.html or, alternatively setup nginx and serve the html file. No database, no config no extra fat needed! All settings saved to the browser.
+### Installation via Docker Compose
+
+
+1. **Create project directory:**
+```bash
+   mkdir traccar-timeline && cd traccar-timeline
+```
+
+2. **Create `compose.yaml`:**
+```yaml
+
+  services:
+    traccar-timeline:
+      container_name: traccar-timeline
+      image: ghcr.io/iamdabe/traccar-timeline:latest
+      ports:
+        - "80:80"
+      restart: unless-stopped
+      environment:
+        # Nginx configuration
+        - NGINX_HOST=localhost
+        - NGINX_PORT=80
+```
+
+3. **Deploy:**
+```bash
+   docker-compose up -d
+```
+
+### No Install method
+Download the `src/traccar.html` to your pc and load it your web browser - That's it! or visit https://iamdabe.github.io/Traccar-Timeline/src/traccar.html. No database, no config no extra fat needed! All settings saved to the browser.
+
 
 **Note:** On first run a popup will show complaining about the Traccar API url. Head into settings and enter the URL to your traccar API. Ensure you complete with the trailing slash.
 
-#### CORS and traccar.xml
+
+### CORS and traccar.xml
 If you don't proxy your Traccar API (see Nginx proxy.conf below) you'll need to ensure your server CORS is configued correctly by editing your traccar.xml, example below: 
 ```
 <properties>
@@ -85,7 +119,7 @@ If you don't proxy your Traccar API (see Nginx proxy.conf below) you'll need to 
 </properties>
 ```
 
-#### Nginx proxy
+### Nginx proxy
 If you don't wish to expose your user/pass for your traccar server you can also use a nginx proxy by using a location conf. See example below. 
 ```
 server {
