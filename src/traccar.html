@@ -475,10 +475,13 @@ body.modal-open {
   overflow-x: hidden;
   cursor: crosshair;
   display: flex;
+  transition: min-height 0.3s ease, max-height 0.3s ease;
 }
 
-#timeline.collapsed {
+/* Collapsed state for #timeline - target via parent container */
+#timeline-container.collapsed #timeline {
   max-height: none;
+  min-height: auto;
   overflow: hidden;
 }
 
@@ -492,16 +495,22 @@ body.modal-open {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
+  transition: width 0.3s ease, padding 0.3s ease, border-width 0.3s ease;
 }
 
 /* Timeline collapsed state - target children via parent */
 #timeline-container.collapsed #timeline-labels-column {
-  display: none;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border-right: none;
 }
 
 #timeline-container.collapsed #timeline-devices {
   gap: 1px;
   padding: 2px 0;
+  min-height: auto;
 }
 
 #timeline-container.collapsed .timeline-device-row {
@@ -529,6 +538,7 @@ body.dark-mode #timeline-labels-column {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  transition: gap 0.3s ease, padding 0.3s ease, min-height 0.3s ease;
 }
 
 body.dark-mode .timeline-device-row {
@@ -538,6 +548,7 @@ body.dark-mode .timeline-device-row {
   position: relative;
   min-height: 1.5rem; /* Match timeline-device-name min-height for alignment */
   display: flex;
+  transition: min-height 0.3s ease, height 0.3s ease;
   align-items: center;
   background: rgba(255, 255, 255, 0.9);
 }
@@ -707,7 +718,7 @@ body.dark-mode .timeline-tick-label {
   height: 1em;
   border-radius: 2px;
   opacity: 0.8;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, height 0.3s ease;
   z-index: 3;
   top: 50%;
   transform: translateY(-50%);  
@@ -1722,7 +1733,7 @@ body.dark-mode .palette-item input[type="text"] {
   </section>
 
   <!-- Timeline Container -->
-  <section id="timeline-container">
+  <section id="timeline-container" class="collapsed">
     <div id="timeline-title">
       <div id="timeline-title-left">
         <button id="timeline-collapse-btn" class="secondary timeline-collapse-btn"><i class="fa-solid fa-caret-up"></i></button>
@@ -1739,7 +1750,7 @@ body.dark-mode .palette-item input[type="text"] {
     
     <div id="timeline-wrapper">
       <div id="timeline">
-        <div id="timeline-labels-column" class="collapsed"></div>
+        <div id="timeline-labels-column"></div>
         <div id="timeline-devices">
           <div id="scrubber" class="timeline-scrubber"></div>
         </div>
@@ -4198,15 +4209,45 @@ function drawTimeline() {
   updateTimelineHeight();
 }
 
-function updateTimelineHeight() {
-  // Use requestAnimationFrame to ensure DOM has updated
-  requestAnimationFrame(() => {
-    const timelineContainer = document.getElementById('timeline-container');
-    if (timelineContainer) {
-      const height = timelineContainer.offsetHeight;
-      document.documentElement.style.setProperty('--timeline-height', `${height}px`);
-    }
-  });
+function updateTimelineHeight(waitForTransition = true) {
+  const timelineContainer = document.getElementById('timeline-container');
+  if (!timelineContainer) return;
+
+  const measureAndSet = () => {
+    const height = timelineContainer.offsetHeight;
+    document.documentElement.style.setProperty('--timeline-height', `${height}px`);
+  };
+
+  if (waitForTransition) {
+    // Wait for CSS transition to complete (0.3s) before measuring
+    // Use transitionend event with a fallback timeout
+    let handled = false;
+
+    const handleTransitionEnd = (e) => {
+      // Only handle transitions on the timeline container itself
+      if (e.target === timelineContainer || e.target.closest('#timeline-devices')) {
+        if (!handled) {
+          handled = true;
+          timelineContainer.removeEventListener('transitionend', handleTransitionEnd);
+          measureAndSet();
+        }
+      }
+    };
+
+    timelineContainer.addEventListener('transitionend', handleTransitionEnd);
+
+    // Fallback timeout in case transitionend doesn't fire
+    setTimeout(() => {
+      if (!handled) {
+        handled = true;
+        timelineContainer.removeEventListener('transitionend', handleTransitionEnd);
+        measureAndSet();
+      }
+    }, 350); // Slightly longer than 0.3s transition
+  } else {
+    // Immediate measurement (no transition)
+    requestAnimationFrame(measureAndSet);
+  }
 }
 
 function updateTimelineMarkers(time, locked = false) {
@@ -4511,14 +4552,14 @@ function setupEventListeners() {
   if (collapseBtn) {
     collapseBtn.onclick = () => {
       STATE.isTimelineCollapsed = !STATE.isTimelineCollapsed;
-      
+
       if (STATE.isTimelineCollapsed) {
         collapseBtn.innerHTML = '<i class="fa-solid fa-caret-up"></i>';
       } else {
         collapseBtn.innerHTML = '<i class="fa-solid fa-caret-down"></i> ';
       }
-      updateTimelineHeight();
-      drawTimeline();
+      drawTimeline(); // Apply collapsed class first
+      updateTimelineHeight(); // Then wait for transition and measure
     };
   }
 
@@ -5093,8 +5134,8 @@ async function init() {
       }
     }
    
-    // Initial timeline height update
-    updateTimelineHeight();
+    // Initial timeline height update (immediate, no transition)
+    updateTimelineHeight(false);
  
     // Now fetch devices - if this fails, settings button still works
     await fetchDevices();
