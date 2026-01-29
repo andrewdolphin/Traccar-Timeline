@@ -2488,16 +2488,24 @@ function showError(message, canRetry = false) {
 
   const messageP = document.createElement('p');
   messageP.innerHTML = message;
-  messageP.style.marginBottom = canRetry ? '16px' : '0';
+  messageP.style.marginBottom = '16px';
   errorDiv.appendChild(messageP);
 
-  if (canRetry) {
+  const dialogActions = document.createElement('div');
+  dialogActions.className = 'dialog-actions';
 
-    const dialogActions = document.createElement('div');
-    dialogActions.className = 'dialog-actions';
+  // Close button (always present, aligned left)
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = 'Close';
+  closeBtn.classList.add('secondary');
+  closeBtn.onclick = () => {
+    errorModal.remove();
+  };
+  dialogActions.appendChild(closeBtn);
+
+  if (canRetry) {
     const dialogActionsRight = document.createElement('div');
     dialogActionsRight.className = 'dialog-actions-right';
-
 
     const retryBtn = document.createElement('button');
     retryBtn.id = 'retry-btn';
@@ -2521,9 +2529,9 @@ function showError(message, canRetry = false) {
     dialogActionsRight.appendChild(settingsBtn);
 
     dialogActions.appendChild(dialogActionsRight);
-
-    errorDiv.appendChild(dialogActions);
   }
+
+  errorDiv.appendChild(dialogActions);
 
   errorModal.appendChild(errorDiv);
   document.body.appendChild(errorModal);
