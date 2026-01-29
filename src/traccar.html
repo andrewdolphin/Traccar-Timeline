@@ -494,9 +494,27 @@ body.modal-open {
   gap: 2px;
 }
 
-/* Hide labels column when timeline is collapsed */
-#timeline-labels-column.collapsed {
+/* Timeline collapsed state - target children via parent */
+#timeline-container.collapsed #timeline-labels-column {
   display: none;
+}
+
+#timeline-container.collapsed #timeline-devices {
+  gap: 1px;
+  padding: 2px 0;
+}
+
+#timeline-container.collapsed .timeline-device-row {
+  min-height: 4px;
+  height: 4px;
+}
+
+#timeline-container.collapsed .timeline-track {
+  height: 3px;
+}
+
+#timeline-container.collapsed .timeline-labels {
+  margin-left: 0;
 }
 
 body.dark-mode #timeline-labels-column {
@@ -528,23 +546,6 @@ body.dark-mode .timeline-device-row {
 
 .timeline-device-row:last-child {
   margin-bottom: 0;
-}
-
-/* Hide individual device rows when timeline is collapsed */
-.timeline-device-row.collapsed {
-  display: none;
-}
-
-/* Amalgamated row shown in collapsed state */
-.timeline-amalgamated-row {
-  position: relative;
-  min-height: 1.5rem;
-  display: none;
-  align-items: center;
-}
-
-.timeline-amalgamated-row.visible {
-  display: flex;
 }
 
 /* NEW: Label in separate column */
@@ -623,7 +624,6 @@ body.dark-mode .timeline-selection {
   border-color: var(--accent-bg);
 }
 
-/* FIXED: Scrubber styling */
 .timeline-scrubber {
   position: absolute;
   top: 0;
@@ -668,7 +668,8 @@ body.dark-mode .timeline-scrubber.locked {
   width: 100%;
   pointer-events: none;
   position: relative;
-  margin-left: 100px; /* Match label column width */
+  margin-left: 100px; 
+  transition: margin-left 0.2s ease;
 }
 
 .timeline-tick-label {
@@ -1757,7 +1758,7 @@ body.dark-mode .palette-item input[type="text"] {
 const CONFIG = {
   API_URL: 'https://demo4.traccar.org/api/',
   POLL_INTERVAL_MS: 5000,
-  MOVEMENT_THRESHOLD_M: 5,
+  MOVEMENT_THRESHOLD_M: 50,
   PALETTE: [
     '#2A9D8F', // Teal
     '#E63946', // Bright Red
@@ -1773,9 +1774,9 @@ const CONFIG = {
     '#06D6A0'  // Sea Green
   ],
   REALTIME_HISTORY_HOURS: 3,
-  DRAG_THRESHOLD_PX: 5, // Minimum pixels to move before considering it a drag (vs tap/click)
-  SHOW_DIRECTION_ARROWS: true, // Show arrows on polylines to indicate direction of travel
-  ARROW_REPEAT_PIXELS: 200, // Pixels between direction arrows on trails
+  DRAG_THRESHOLD_PX: 5, 
+  SHOW_DIRECTION_ARROWS: true, 
+  ARROW_REPEAT_PIXELS: 200, 
   GEOCODE_CACHE: {},
   // Time constants
   MS_PER_SECOND: 1000,
@@ -4043,73 +4044,15 @@ function drawTimeline() {
   endLabel.textContent = formatFn(new Date(tickEnd));
   labelsContainer.appendChild(endLabel);
 
-  // Handle collapsed state - show amalgamated timeline
-  if (STATE.isTimelineCollapsed) {
-    labelsColumn.classList.add('collapsed');
-    
-    // Collect all movement segments from all devices
-    const allSegments = [];
-    Object.keys(DATA.movementSegments).forEach((deviceId) => {
-      const segments = DATA.movementSegments[deviceId];
-      segments.forEach(segment => {
-        allSegments.push({ start: segment.start, end: segment.end });
-      });
-    });
-    
-    // Merge overlapping segments
-    if (allSegments.length > 0) {
-      allSegments.sort((a, b) => a.start - b.start);
-      const merged = [allSegments[0]];
-      
-      for (let i = 1; i < allSegments.length; i++) {
-        const current = allSegments[i];
-        const last = merged[merged.length - 1];
-        
-        if (current.start <= last.end) {
-          // Overlapping or adjacent, merge them
-          last.end = new Date(Math.max(last.end.getTime(), current.end.getTime()));
-        } else {
-          // Non-overlapping, add as new segment
-          merged.push(current);
-        }
-      }
-      
-      // Create amalgamated row
-      const amalgamatedRow = document.createElement('div');
-      amalgamatedRow.className = 'timeline-amalgamated-row visible';
-      
-      const tracksContainer = document.createElement('div');
-      tracksContainer.className = 'timeline-device-tracks';
-      
-      merged.forEach(segment => {
-        const startPercent = ((segment.start - STATE.startTime) / durationMs) * 100;
-        const endPercent = ((segment.end - STATE.startTime) / durationMs) * 100;
-        const widthPercent = endPercent - startPercent;
-        
-        if (widthPercent > 0) {
-          const track = document.createElement('div');
-          track.className = 'timeline-track';
-          track.style.left = startPercent + '%';
-          track.style.width = widthPercent + '%';
-          track.style.background = '#999'; // Grey/colourless
-          track.title = `Activity: ${segment.start.toLocaleString()} - ${segment.end.toLocaleString()}`;
-          track.style.cursor = 'pointer';
-          
-          tracksContainer.appendChild(track);
-        }
-      });
-      
-      amalgamatedRow.appendChild(tracksContainer);
-      timelineDevices.appendChild(amalgamatedRow);
+  // Handle collapsed/expanded state via parent container
+  const timelineContainer = document.getElementById('timeline-container');
+  if (timelineContainer) {
+    if (STATE.isTimelineCollapsed) {
+      timelineContainer.classList.add('collapsed');
+    } else {
+      timelineContainer.classList.remove('collapsed');
     }
-    
-    // Set up interaction handlers for collapsed timeline
-    setupTimelineInteraction(timelineDevices, durationMs);
-    return;
   }
-  
-  // Expanded state - show individual device timelines
-  labelsColumn.classList.remove('collapsed');
 
   // Draw movement tracks with device names in separate columns
   // Only show devices that have movement segments in the current time range
