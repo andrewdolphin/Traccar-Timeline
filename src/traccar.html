@@ -198,6 +198,7 @@ body.modal-open {
 
 .popup-time-ago {
   color: #666;
+  font-size: 11px;
 }
 
 .popup-section {
@@ -2770,8 +2771,9 @@ function createPopupContent(deviceId, positionData) {
 
   const name  = DATA.deviceNames[deviceId];
   const color = DATA.deviceColors[deviceId];
+  const motion = ``;
 
-  const motion =
+  const motion2 =
     attrs.motion != null
       ? `<div class="popup-motion">
            ${attrs.motion ? '🚗' : '🅿️'}
@@ -2786,7 +2788,8 @@ function createPopupContent(deviceId, positionData) {
          </div>`
       : '';
 
-  const courseHtml =
+  const courseHtml = ``;
+  const courseHtml2 =
     course != null
       ? `<div class="popup-section">
            <span class="popup-arrow">${getDirectionArrow(course)}</span>
@@ -2804,7 +2807,8 @@ function createPopupContent(deviceId, positionData) {
          </div>`
       : '';
 
-  const distanceHtml =
+  const distanceHtml = ``;
+  const distanceHtml2 =
     (attrs.distance != null || attrs.totalDistance != null)
       ? `<div class="popup-section">
            ${attrs.distance != null
@@ -2815,8 +2819,8 @@ function createPopupContent(deviceId, positionData) {
              : ''}
          </div>`
       : '';
-
-  const accuracyHtml =
+  const accuracyHtml = ``;
+  const accuracyHtml2 =
     accuracy != null
       ? `<div class="popup-section">
            🎯 Accuracy:
@@ -2831,12 +2835,12 @@ function createPopupContent(deviceId, positionData) {
   container.innerHTML = `
     <header class="popup-header">
       <strong class="popup-title">${name}</strong>
+      <span class="popup-time-ago">(${getTimeAgo(timestamp)})</span>
       <div class="popup-divider"></div>
     </header>
 
     <section class="popup-time">
       <div>📅 ${timestamp.toLocaleString()}</div>
-      <div class="popup-time-ago">(${getTimeAgo(timestamp)})</div>
     </section>
 
     ${(motion || speedHtml)
