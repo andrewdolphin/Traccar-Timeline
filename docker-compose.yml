@@ -2,7 +2,7 @@
 services:
   traccar-timeline:
     container_name: traccar-timeline
-    image: ghcr.io/iamdabe/traccar-timeline:latest
+    image: ghcr.io/andrewdolphin/traccar-timeline:latest
     ports:
       - "80:80"
     restart: unless-stopped
