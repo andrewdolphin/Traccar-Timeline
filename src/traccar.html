@@ -1955,10 +1955,6 @@ function loadSettings() {
       if (settings.palette && Array.isArray(settings.palette)) CONFIG.PALETTE = settings.palette;
       if (settings.foregroundColor) CONFIG.FOREGROUND_COLOR = settings.foregroundColor;
       if (settings.backgroundColor) CONFIG.BACKGROUND_COLOR = settings.backgroundColor;
-      
-      // Update UI with saved values
-      updateSettingsUI();
-      applyAccentColors();
     } catch (err) {
       console.error('Failed to load settings:', err);
     }
@@ -1967,6 +1963,17 @@ function loadSettings() {
     CONFIG.FOREGROUND_COLOR = '#4ECDC4';
     CONFIG.BACKGROUND_COLOR = '#2A9D8F';
   }
+
+  // OVERRIDE: Apply Docker Environment Variables (Takes priority over local storage)
+  if (window.envConfig) {
+    if (window.envConfig.TRACCAR_API_URL) CONFIG.API_URL = window.envConfig.TRACCAR_API_URL;
+    if (window.envConfig.TRACCAR_USERNAME) CONFIG.API_USERNAME = window.envConfig.TRACCAR_USERNAME;
+    if (window.envConfig.TRACCAR_PASSWORD) CONFIG.API_PASSWORD = window.envConfig.TRACCAR_PASSWORD;
+  }
+
+  // Update UI with saved/env values (Moved outside the try-block so it applies cleanly on first-load too)
+  updateSettingsUI();
+  applyAccentColors();
 }
 
 function saveSettings() {
@@ -2003,9 +2010,30 @@ function updateSettingsUI() {
   const backgroundColorInput = document.getElementById('background-color');
   const backgroundColorTextInput = document.getElementById('background-color-text');
 
-  if (apiUrlInput) apiUrlInput.value = CONFIG.API_URL;
-  if (apiUsernameInput) apiUsernameInput.value = CONFIG.API_USERNAME || '';
-  if (apiPasswordInput) apiPasswordInput.value = CONFIG.API_PASSWORD || '';
+  if (apiUrlInput) {
+    apiUrlInput.value = CONFIG.API_URL;
+    if (window.envConfig && window.envConfig.TRACCAR_API_URL) {
+      apiUrlInput.disabled = true;
+      apiUrlInput.title = "Managed by Docker Environment Variables";
+    }
+  }
+  
+  if (apiUsernameInput) {
+    apiUsernameInput.value = CONFIG.API_USERNAME || '';
+    if (window.envConfig && window.envConfig.TRACCAR_USERNAME) {
+      apiUsernameInput.disabled = true;
+      apiUsernameInput.title = "Managed by Docker Environment Variables";
+    }
+  }
+  
+  if (apiPasswordInput) {
+    apiPasswordInput.value = CONFIG.API_PASSWORD || '';
+    if (window.envConfig && window.envConfig.TRACCAR_PASSWORD) {
+      apiPasswordInput.disabled = true;
+      apiPasswordInput.title = "Managed by Docker Environment Variables";
+    }
+  }
+
   if (pollIntervalInput) pollIntervalInput.value = CONFIG.POLL_INTERVAL_MS;
   if (movementThresholdInput) movementThresholdInput.value = CONFIG.MOVEMENT_THRESHOLD_M;
   if (realtimeHoursInput) realtimeHoursInput.value = CONFIG.REALTIME_HISTORY_HOURS;
