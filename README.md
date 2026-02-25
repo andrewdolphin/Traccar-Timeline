@@ -1,3 +1,5 @@
+# My fork, adjusted for docker installation only. Introduces environment variables for the API URL, username and password, see docker-compose.yml.
+
 # Traccar-Timeline
 Simple html single page web app for viewing Traccar API GPS data. Uses timeline-based interface for device movements including real-time and historical data.
 
