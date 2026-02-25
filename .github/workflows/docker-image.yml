@@ -37,6 +37,6 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ghcr.io/iamdabe/traccar-timeline:latest
-            ghcr.io/iamdabe/traccar-timeline:${{ github.ref_name }}
-            ghcr.io/iamdabe/traccar-timeline:${{ env.VERSION }}
+            ghcr.io/andrewdolphin/traccar-timeline:latest
+            ghcr.io/andrewdolphin/traccar-timeline:${{ github.ref_name }}
+            ghcr.io/andrewdolphin/traccar-timeline:${{ env.VERSION }}
